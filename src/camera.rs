@@ -1,12 +1,14 @@
 #![allow(dead_code)]
+use std::f32;
+
 use macroquad::prelude::*;
 
 pub struct Camera {
     pub camera: Camera2D,
     zoom: f32,
-    zoom_speed: f32,
-    rotation_speed: f32,
-    pos_speed: Vec2,
+    target_pos: Vec2,
+    target_rotation: f32,
+    target_zoom: f32,
 }
 
 impl Camera {
@@ -21,9 +23,7 @@ impl Camera {
                 viewport: None,
             },
             zoom,
-            zoom_speed: 1.0,
-            rotation_speed: 0.0,
-            pos_speed: Vec2::default(),
+            ..Default::default()
         }
     }
 
@@ -48,18 +48,16 @@ impl Camera {
             Direction::Down => Vec2::from_angle(rotation + std::f32::consts::FRAC_PI_2),
             Direction::Left => -Vec2::from_angle(rotation),
         };
-        self.camera.target += movement * (speed / self.zoom);
+        self.camera.target += movement * (speed / self.zoom) * get_frame_time();
     }
 
-    pub fn smooth_move_to_direction(&mut self, direction: Direction, force: f32) {
-        let rotation = -self.camera.rotation.to_radians();
-        let movement = match direction {
-            Direction::Up => Vec2::from_angle(rotation - std::f32::consts::FRAC_PI_2),
-            Direction::Right => Vec2::from_angle(rotation),
-            Direction::Down => Vec2::from_angle(rotation + std::f32::consts::FRAC_PI_2),
-            Direction::Left => -Vec2::from_angle(rotation),
-        };
-        self.pos_speed += movement * force;
+    pub fn smooth_move_to_position(&mut self, target_position: Vec2) {
+        self.target_pos = target_position;
+    }
+
+    pub fn smooth_move_update(&mut self, smoothin_factor: f32) {
+        self.camera.target +=
+            (self.target_pos - self.camera.target) * smoothin_factor * get_frame_time();
     }
 
     pub fn set_rotation(&mut self, rotation: f32) {
@@ -70,25 +68,35 @@ impl Camera {
         self.camera.rotation += rotation;
     }
 
+    pub fn smooth_rotate(&mut self, target_rotation_delta: f32) {
+        self.target_rotation += target_rotation_delta;
+    }
+
+    pub fn smooth_rotate_update(&mut self, smoothin_factor: f32) {
+        self.camera.rotation +=
+            (self.target_rotation - self.camera.rotation) * smoothin_factor * get_frame_time();
+    }
+
     pub fn set_zoom(&mut self, zoom: f32) {
         self.zoom = zoom;
         self.camera.zoom.x = zoom / screen_width();
         self.camera.zoom.y = zoom / screen_height();
     }
 
-    pub fn zoom(&mut self, zoom: f32, speed: f32) {
-        self.zoom *= speed.powf(zoom);
+    pub fn zoom(&mut self, speed: f32) {
+        self.zoom *= speed;
         self.camera.zoom.x = self.zoom / screen_width();
         self.camera.zoom.y = self.zoom / screen_height();
     }
 
-    pub fn smooth_update(&mut self) {
-        self.pos_speed *= 0.9;
-        if self.pos_speed.length() < 3. {
-            self.pos_speed.x = 0.0;
-            self.pos_speed.y = 0.0;
-        }
-        self.camera.target += self.pos_speed;
+    pub fn smooth_zoom(&mut self, speed: f32) {
+        self.target_zoom *= speed;
+    }
+
+    pub fn smooth_zoom_update(&mut self, smoothin_factor: f32) {
+        self.zoom += (self.target_zoom - self.zoom) * smoothin_factor * get_frame_time();
+        self.camera.zoom.x = self.zoom / screen_width();
+        self.camera.zoom.y = self.zoom / screen_height();
     }
 
     pub fn screen_to_world(&mut self, point: Vec2) -> Vec2 {
@@ -104,14 +112,14 @@ impl Default for Camera {
     fn default() -> Self {
         Self {
             camera: Camera2D {
-                target: Vec2::new(screen_width() / 2., screen_height() / 2.),
-                zoom: Vec2::new(2. / screen_width(), 2. / screen_height()),
+                target: Vec2::default(),
+                zoom: Vec2::new(1. / screen_width(), 1. / screen_height()),
                 ..Default::default()
             },
-            zoom: 2.,
-            zoom_speed: 1.0,
-            rotation_speed: 0.0,
-            pos_speed: Vec2::default(),
+            zoom: 1.,
+            target_pos: Vec2::default(),
+            target_rotation: 0.,
+            target_zoom: 1.,
         }
     }
 }
