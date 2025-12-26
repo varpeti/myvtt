@@ -7,10 +7,7 @@ use anyhow::Result;
 use macroquad::prelude::*;
 
 use crate::{
-    asset_manager::{Asset, AssetManager},
-    camera::Camera,
-    game_config::GameConfig,
-    game_state::GameState,
+    asset_manager::AssetManager, camera::Camera, game_config::GameConfig, game_state::GameState,
 };
 
 pub struct Game {
@@ -31,6 +28,7 @@ impl Game {
     }
 
     pub async fn run(&mut self) -> Result<()> {
+        eprint!("{}", self.config.hex_layout.rect_size());
         self.load().await?;
         #[allow(clippy::while_immutable_condition)]
         while !self.state.should_exit {
