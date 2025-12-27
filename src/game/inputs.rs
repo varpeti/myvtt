@@ -9,17 +9,19 @@ impl Game {
     }
 
     pub(super) fn inputs(&mut self) -> Result<()> {
+        let camera_speed = 2.;
         if is_key_down(KeyCode::W) {
-            self.camera.move_to_target(vec3(0., -10., 0.));
+            self.camera.move_to_direction(Direction::Up, camera_speed);
         }
         if is_key_down(KeyCode::A) {
-            self.camera.move_to_target(vec3(-10., 0., 0.));
+            self.camera.move_to_direction(Direction::Left, camera_speed);
         }
         if is_key_down(KeyCode::S) {
-            self.camera.move_to_target(vec3(0., 10., 0.));
+            self.camera.move_to_direction(Direction::Down, camera_speed);
         }
         if is_key_down(KeyCode::D) {
-            self.camera.move_to_target(vec3(10., 0., 0.));
+            self.camera
+                .move_to_direction(Direction::Right, camera_speed);
         }
 
         // let mouse_pos_in_world = self.camera.screen_to_world(Vec2::from(mouse_position()));
@@ -32,7 +34,7 @@ impl Game {
         //     self.camera.smooth_move_to_target(mouse_pos_in_world);
         // }
 
-        let rotation = 30.;
+        let rotation = f32::to_radians(30.);
         let zoom = 10.;
         let mouse_wheel_y = mouse_wheel().1;
         if mouse_wheel_y > 0.0 {

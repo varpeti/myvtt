@@ -16,12 +16,16 @@ pub struct Camera {
 impl Camera {
     pub fn new(target: Vec3, rotation: f32, zoom: f32) -> Self {
         // Forward -Y; Backward +Y; Left -X; Right +X; Up -Z; Down +Z;
-        let mut position = target;
-        position.z += zoom;
-        position.y -= zoom;
         let camera = Camera3D {
             target,
-            position,
+            position: {
+                let mut position = target;
+                position.z += zoom;
+                let rotation_vec2 = Vec2::from_angle(rotation + f32::consts::FRAC_2_PI) * zoom;
+                position.x -= rotation_vec2.x;
+                position.y -= rotation_vec2.y;
+                position
+            },
             aspect: None,
             up: vec3(0., 0., -1.),
             fovy: 45.0_f32.to_radians(),
@@ -50,36 +54,35 @@ impl Camera {
             self.camera.target += to_move;
             self.camera.position += to_move;
         }
-
-        //
-        // self.rotation +=
-        //     (self.to_rotation - self.rotation) * smoothing_factor_rotation * get_frame_time();
-
         self.zoom += (self.to_zoom - self.zoom) * smoothing_factor_zoom * dt;
+        self.rotation += (self.to_rotation - self.rotation) * smoothing_factor_rotation * dt;
 
         self.camera.position = {
             let mut position = self.camera.target;
             position.z += self.zoom;
-            position.y -= self.zoom;
+            let rotation_vec2 = Vec2::from_angle(self.rotation) * self.zoom;
+            position.x += rotation_vec2.y;
+            position.y -= rotation_vec2.x;
             position
         };
 
         set_camera(&self.camera);
     }
 
-    // pub fn smooth_move_to_direction(&mut self, direction: Direction, distance: f32) {
-    //     let rotation = -self.camera.rotation.to_radians();
-    //     let movement = match direction {
-    //         Direction::Up => Vec2::from_angle(rotation - std::f32::consts::FRAC_PI_2),
-    //         Direction::Right => Vec2::from_angle(rotation),
-    //         Direction::Down => Vec2::from_angle(rotation + std::f32::consts::FRAC_PI_2),
-    //         Direction::Left => -Vec2::from_angle(rotation),
-    //     };
-    //     self.to_target += movement * (distance / self.zoom) * get_frame_time();
-    // }
-
     pub fn move_to_target(&mut self, to_target: Vec3) {
         self.to_target = to_target;
+    }
+
+    pub fn move_to_direction(&mut self, direction: Direction, distance_per_second: f32) {
+        let movement_vec2 = match direction {
+            Direction::Up => Vec2::from_angle(self.rotation - std::f32::consts::FRAC_PI_2),
+            Direction::Right => Vec2::from_angle(self.rotation),
+            Direction::Down => Vec2::from_angle(self.rotation + std::f32::consts::FRAC_PI_2),
+            Direction::Left => -Vec2::from_angle(self.rotation),
+        };
+        let movement_vec3 = vec3(movement_vec2.x, movement_vec2.y, 0.);
+
+        self.to_target += movement_vec3 * distance_per_second * -self.zoom * get_frame_time();
     }
 
     pub fn rotate(&mut self, to_rotation_delta: f32) {

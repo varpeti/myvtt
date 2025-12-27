@@ -10,14 +10,21 @@ impl Game {
     }
 
     pub(crate) fn draw_hud(&mut self) -> Result<()> {
+        let middle = vec2(screen_width() / 2., screen_height() / 2.);
         draw_hexagon(
-            0.,
-            0.,
+            middle.x,
+            middle.y,
             7.,
-            3.,
+            1.,
             true,
-            Color::from_hex(0x191724),
+            Color::from_rgba(0x19, 0x17, 0x24, 0x80),
             Color::from_rgba(0xe0, 0xde, 0xf4, 0x80),
+        );
+        draw_circle(
+            middle.x,
+            middle.y,
+            1.,
+            Color::from_rgba(0x19, 0x17, 0x24, 0x80),
         );
 
         draw_multiline_text(
