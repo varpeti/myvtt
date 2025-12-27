@@ -10,12 +10,9 @@ impl Game {
     }
 
     pub(crate) fn draw_hud(&mut self) -> Result<()> {
-        let mouse_world_pos = self.camera.camera.screen_to_world(mouse_position().into());
-
-        let target_pos_screen = self.camera.world_to_screen(self.camera.target_pos);
         draw_hexagon(
-            target_pos_screen.x,
-            target_pos_screen.y,
+            0.,
+            0.,
             7.,
             3.,
             true,
@@ -25,12 +22,11 @@ impl Game {
 
         draw_multiline_text(
             &format!(
-                "{:?} -> {:?}\nt:{} o:{}\n{}",
+                "{:?} -> {:?}\nt:{} p:{}",
                 mouse_position(),
                 self.state.hovered_hex,
                 self.camera.camera.target,
-                self.camera.camera.offset,
-                mouse_world_pos,
+                self.camera.camera.position,
             ),
             12.,
             42.,
