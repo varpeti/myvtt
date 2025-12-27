@@ -109,7 +109,7 @@ impl Camera {
 
 impl Default for Camera {
     fn default() -> Self {
-        Self::new(Vec3::new(0., 0., 0.), 0., -70.)
+        Self::new(Vec3::new(0., 0., 0.), 0., -512.)
     }
 }
 

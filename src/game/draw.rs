@@ -1,4 +1,6 @@
-use crate::{asset_manager::Asset, game::Game};
+use std::f32;
+
+use crate::game::Game;
 
 use anyhow::Result;
 use macroquad::prelude::*;
@@ -15,77 +17,66 @@ impl Game {
         draw_sphere(vec3(2., 0., 0.), 1., None, GREEN);
         draw_sphere(vec3(0., 2., 0.), 1., None, RED);
 
-        // let pos = self
-        //     .config
-        //     .hex_layout
-        //     .hex_to_world_pos(self.state.hovered_hex);
-        // draw_hexagon(
-        //     pos.x,
-        //     pos.y,
-        //     self.config.hex_layout.scale.x - 1.,
-        //     3.,
-        //     true,
-        //     Color::from_rgba(0xe0, 0xde, 0xf4, 0xff),
-        //     Color::from_rgba(0xe0, 0xde, 0xf4, 0x80),
-        // );
-        //
-        // for hex in self.state.hovered_hex.all_neighbors().iter() {
-        //     let pos = self.config.hex_layout.hex_to_world_pos(*hex);
-        //     draw_hexagon(
-        //         pos.x,
-        //         pos.y,
-        //         self.config.hex_layout.scale.x - 1.,
-        //         3.,
-        //         true,
-        //         Color::from_rgba(0xe0, 0xde, 0xf4, 0x80),
-        //         Color::from_rgba(0x0, 0x0, 0x0, 0x00),
-        //     );
-        // }
-        //
-        // let offset = (
-        //     self.config.hex_layout.rect_size().x / 2.,
-        //     self.config.hex_layout.scale.y / 2.,
-        // );
-        // let hex = self
-        //     .config
-        //     .hex_layout
-        //     .world_pos_to_hex(hexx::Vec2::new(0., 0.));
-        // let pos = self.config.hex_layout.hex_to_world_pos(hex);
-        // let size = self.config.hex_layout.rect_size();
-        // draw_texture_ex(
-        //     self.assets.get(&Asset::Hex)?,
-        //     pos.x - size.x / 2. + offset.0,
-        //     pos.y - size.y / 2. + offset.1,
-        //     WHITE,
-        //     DrawTextureParams {
-        //         dest_size: Some(Vec2::new(size.x, size.y)),
-        //         source: None,
-        //         rotation: 0.,
-        //         flip_x: false,
-        //         flip_y: false,
-        //         pivot: None,
-        //     },
-        // );
-        // for hex in hex.all_neighbors().iter() {
-        //     let pos = self.config.hex_layout.hex_to_world_pos(*hex);
-        //     draw_texture_ex(
-        //         self.assets.get(&Asset::Hex)?,
-        //         pos.x - size.x / 2. + offset.0,
-        //         pos.y - size.y / 2. + offset.1,
-        //         WHITE,
-        //         DrawTextureParams {
-        //             dest_size: Some(Vec2::new(size.x, size.y)),
-        //             source: None,
-        //             rotation: 0.,
-        //             flip_x: false,
-        //             flip_y: false,
-        //             pivot: None,
-        //         },
-        //     );
-        // }
-        //
-        // draw_circle(0., 0., 3., RED);
+        draw_hexagonal_prism(
+            vec3(0., 0., 0.),
+            64.,
+            32.,
+            Color::from_hex(0xebbcba),
+            Color::from_hex(0x191724),
+        );
 
         Ok(())
     }
+}
+
+fn draw_hexagonal_prism(pos: Vec3, size: f32, height: f32, top_color: Color, bottom_color: Color) {
+    let mut mesh = Mesh {
+        vertices: vec![],
+        indices: vec![
+            // // Top face triangles (first 6 vertices are bottom face)
+            // 0, 2, 4, // First bottom triangle
+            // 0, 4, 6, // Second bottom triangle
+            // 0, 6, 8, // Third bottom triangle
+            // 0, 8, 10, // Fourth bottom triangle
+            // Top face triangles (last 6 vertices are top face)
+            1, 3, 5, // First top triangle
+            1, 5, 7, // Second top triangle
+            1, 7, 9, // Third top triangle
+            1, 9, 11, // Fourth top triangle
+            // Side face triangles (connecting bottom and top vertices)
+            0, 1, 2, // Side 1, triangle 1
+            2, 1, 3, // Side 1, triangle 2
+            2, 3, 4, // Side 2, triangle 1
+            4, 3, 5, // Side 2, triangle 2
+            4, 5, 6, // Side 3, triangle 1
+            6, 5, 7, // Side 3, triangle 2
+            6, 7, 8, // Side 4, triangle 1
+            8, 7, 9, // Side 4, triangle 2
+            8, 9, 10, // Side 5, triangle 1
+            10, 9, 11, // Side 5, triangle 2
+            10, 11, 0, // Side 6, triangle 1
+            0, 11, 1, // Side 6, triangle 2
+        ],
+        texture: None,
+    };
+
+    for i in 0..6 {
+        let angle = f32::consts::FRAC_PI_3 * i as f32;
+        let point = Vec2::from_angle(angle) * size;
+        mesh.vertices.push(Vertex {
+            position: vec3(point.x, point.y, pos.z),
+            color: bottom_color.into(),
+            uv: Vec2::default(),
+            normal: Vec4::default(),
+        });
+
+        mesh.vertices.push(Vertex {
+            position: vec3(point.x, point.y, pos.z - height),
+            color: top_color.into(),
+            uv: Vec2::default(),
+            normal: Vec4::default(),
+        })
+    }
+
+    draw_mesh(&mesh);
 }
