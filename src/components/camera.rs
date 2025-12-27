@@ -5,7 +5,7 @@ use std::f32;
 use macroquad::prelude::*;
 
 pub struct Camera {
-    pub camera: Camera3D,
+    camera: Camera3D,
     rotation: f32,
     zoom: f32,
     to_target: Vec3,
@@ -105,6 +105,18 @@ impl Camera {
     //     todo!()
     //     //self.camera.world_to_screen(point)
     // }
+
+    pub fn get_target(&self) -> Vec3 {
+        self.camera.target
+    }
+
+    pub fn get_zoom(&self) -> f32 {
+        self.zoom
+    }
+
+    pub fn get_rotation(&self) -> f32 {
+        self.rotation
+    }
 }
 
 impl Default for Camera {

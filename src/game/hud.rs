@@ -4,12 +4,8 @@ use anyhow::Result;
 use macroquad::prelude::*;
 
 impl Game {
-    pub(crate) fn c3(&mut self) -> Result<()> {
-        set_default_camera();
-        Ok(())
-    }
-
     pub(crate) fn draw_hud(&mut self) -> Result<()> {
+        set_default_camera();
         let middle = vec2(screen_width() / 2., screen_height() / 2.);
         draw_hexagon(
             middle.x,
@@ -29,11 +25,11 @@ impl Game {
 
         draw_multiline_text(
             &format!(
-                "{:?} -> {:?}\nt:{} p:{}",
+                "mouse: {:?}\ncamera: {} {} {}",
                 mouse_position(),
-                self.state.hovered_hex,
-                self.camera.camera.target,
-                self.camera.camera.position,
+                self.camera.get_target(),
+                self.camera.get_zoom(),
+                self.camera.get_rotation(),
             ),
             12.,
             42.,

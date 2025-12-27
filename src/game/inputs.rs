@@ -1,13 +1,9 @@
-use crate::{camera::Direction, game::Game};
+use crate::{components::camera::Direction, game::Game};
 
 use anyhow::Result;
 use macroquad::prelude::*;
 
 impl Game {
-    pub(super) fn c1(&mut self) -> Result<()> {
-        Ok(())
-    }
-
     pub(super) fn inputs(&mut self) -> Result<()> {
         let camera_speed = 2.;
         if is_key_down(KeyCode::W) {
@@ -35,7 +31,7 @@ impl Game {
         // }
 
         let rotation = f32::to_radians(30.);
-        let zoom = 10.;
+        let zoom = 64.;
         let mouse_wheel_y = mouse_wheel().1;
         if mouse_wheel_y > 0.0 {
             if is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) {
@@ -53,10 +49,10 @@ impl Game {
             }
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
-        if is_key_pressed(KeyCode::Escape) || is_key_pressed(KeyCode::Q) {
-            self.state.should_exit = true;
-        }
+        // #[cfg(not(target_arch = "wasm32"))]
+        // if is_key_pressed(KeyCode::Escape) || is_key_pressed(KeyCode::Q) {
+        //     self.state.should_exit = true;
+        // }
 
         if is_key_pressed(KeyCode::F) {
             self.config.fullscreen = !self.config.fullscreen;

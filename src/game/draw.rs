@@ -6,13 +6,8 @@ use anyhow::Result;
 use macroquad::prelude::*;
 
 impl Game {
-    pub(crate) fn c2(&mut self) -> Result<()> {
-        clear_background(Color::from_hex(0x191724));
-        self.camera.activate(5., 5., 5.);
-        Ok(())
-    }
-
     pub(crate) fn draw(&mut self) -> Result<()> {
+        self.camera.activate(5., 5., 5.);
         draw_sphere(vec3(0., 0., 0.), 1., None, BLUE);
         draw_sphere(vec3(2., 0., 0.), 1., None, GREEN);
         draw_sphere(vec3(0., 2., 0.), 1., None, RED);
@@ -33,7 +28,7 @@ fn draw_hexagonal_prism(pos: Vec3, size: f32, height: f32, top_color: Color, bot
     let mut mesh = Mesh {
         vertices: vec![],
         indices: vec![
-            // // Top face triangles (first 6 vertices are bottom face)
+            // Top face triangles (first 6 vertices are bottom face)
             // 0, 2, 4, // First bottom triangle
             // 0, 4, 6, // Second bottom triangle
             // 0, 6, 8, // Third bottom triangle
