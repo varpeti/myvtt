@@ -3,7 +3,18 @@ name = "myvtt"
 version = "0.1.0"
 edition = "2024"
 
+[target.'cfg(target_arch = "wasm32")'.lib]
+crate-type = ["cdylib"]
+path = "src/wasm32_lib.rs"
+
 [dependencies]
-macroquad = "0.4"
+three-d = { version = "0.18", features = ["window", "text"] }
 anyhow = "1.0"
 hexx = "0.23"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+log = "0.4"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+console_error_panic_hook = "0.1"
+console_log = "1"
