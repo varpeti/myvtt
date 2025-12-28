@@ -1,41 +1,46 @@
+mod draw;
+mod hud;
+mod inputs;
+mod load;
+
 use anyhow::Result;
-use three_d::*;
+use macroquad::prelude::*;
 
-use crate::components::{camera::RPGCamera, game_config::GameConfig, map::Map};
+use crate::{
+    components::{asset_manager::AssetManager, camera::Camera, map::Map},
+    game_config::GameConfig,
+    game_state::GameState,
+};
 
-#[derive(Default)]
-#[allow(dead_code)]
 pub struct Game {
+    assets: AssetManager,
     config: GameConfig,
-    camera: RPGCamera,
+    state: GameState,
+    camera: Camera,
     map: Map,
 }
 
-#[allow(dead_code)]
 impl Game {
-    pub fn load(&mut self, context: &Context) -> Result<()> {
-        self.map.load_models(context)?;
-        Ok(())
+    pub fn new(game_config: GameConfig) -> Self {
+        Self {
+            assets: AssetManager::new(),
+            config: game_config,
+            state: GameState::new(),
+            camera: Camera::default(),
+            map: Map::default(),
+        }
     }
 
-    pub fn run(&mut self, frame_input: &mut FrameInput) -> Result<FrameOutput> {
-        self.handle_events(frame_input)?;
-        self.draw(frame_input)?;
-        Ok(FrameOutput::default())
-    }
-
-    fn handle_events(&mut self, frame_input: &mut FrameInput) -> Result<()> {
-        self.camera.handle_events(frame_input)?;
-        self.map.handle_events(frame_input)?;
-        Ok(())
-    }
-
-    fn draw(&mut self, frame_input: &mut FrameInput) -> Result<()> {
-        frame_input.screen().clear(ClearState::color_and_depth(
-            0.09804, 0.0902, 0.14118, 1., 1.,
-        ));
-        let camera = self.camera.get_camera();
-        self.map.draw(frame_input, camera)?;
+    pub async fn run(&mut self) -> Result<()> {
+        self.load().await?;
+        #[allow(clippy::while_immutable_condition)]
+        while !self.state.should_exit {
+            clear_background(Color::from_hex(0x191724));
+            self.inputs()?;
+            self.draw()?;
+            self.draw_hud()?;
+            next_frame().await;
+        }
         Ok(())
     }
 }

@@ -1,23 +1,15 @@
 mod components;
 mod game;
+mod game_config;
+mod game_state;
 
 use anyhow::Result;
-use three_d::*;
 
-pub fn main() -> Result<()> {
-    let window = Window::new(WindowSettings {
-        title: "myvtt".to_string(),
-        borderless: true,
-        ..Default::default()
-    })?;
+use crate::{game::Game, game_config::GameConfig};
 
-    let mut game = game::Game::default();
-
-    game.load(&window.gl())?;
-
-    window.render_loop(move |mut frame_input| {
-        game.run(&mut frame_input)
-            .unwrap_or_else(|err| panic!("{}", err))
-    });
+#[macroquad::main("Hello-Macroquad")]
+async fn main() -> Result<()> {
+    let mut game = Game::new(GameConfig { fullscreen: false });
+    game.run().await?;
     Ok(())
 }
