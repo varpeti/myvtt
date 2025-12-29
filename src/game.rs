@@ -46,7 +46,7 @@ impl Game {
 
     pub fn draw(&mut self) -> Result<()> {
         self.camera.activate()?;
-        self.map.draw()?;
+        self.map.draw(&self.camera)?;
         set_default_camera();
         self.hud.draw(&self.camera)?;
         Ok(())

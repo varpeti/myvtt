@@ -150,15 +150,43 @@ impl RPGCamera {
         }
     }
 
-    // pub fn screen_to_world(&mut self, point: Vec2) -> Vec3 {
-    //     self.camera.screen_to_world(point)
-    // }
+    pub fn world_to_screen(&self, point: Vec3) -> Option<Vec2> {
+        let view_projection = self.camera.matrix();
+        let clip_space = view_projection * point.extend(1.);
 
-    //
-    // pub fn world_to_screen(&mut self, point: Vec3) -> Vec2 {
-    //     todo!()
-    //     //self.camera.world_to_screen(point)
-    // }
+        if clip_space.w <= 0. {
+            return None; // Behind camera
+        }
+
+        let ndc = clip_space.truncate() / clip_space.w;
+
+        if ndc.x < -1. || ndc.x > 1. || ndc.y < -1. || ndc.y > 1. {
+            return None; // Outside of camera
+        }
+
+        Some(vec2(
+            (ndc.x + 1.) * 0.5 * screen_width(),
+            (1. - ndc.y) * 0.5 * screen_height(),
+        ))
+    }
+
+    pub fn screen_to_world_ray(&self, point: Vec2) -> (Vec3, Vec3) {
+        let inverse_view_porjection = self.camera.matrix().inverse();
+        let ndc = vec2(
+            (point.x / screen_width()) * 2. - 1.,
+            1. - (point.y / screen_height()) * 2.,
+        );
+
+        let near_point = inverse_view_porjection * vec4(ndc.x, ndc.y, -1., 1.);
+        let near_point = near_point.truncate() / near_point.w;
+        let far_point = inverse_view_porjection * vec4(ndc.x, ndc.y, 1., 1.);
+        let far_point = far_point.truncate() / far_point.w;
+
+        let ray_origin = near_point;
+        let ray_direction = (far_point - near_point).normalize();
+
+        (ray_origin, ray_direction)
+    }
 
     pub fn get_target(&self) -> Vec3 {
         self.camera.target
@@ -170,6 +198,10 @@ impl RPGCamera {
 
     pub fn get_rotation(&self) -> f32 {
         self.rotation
+    }
+
+    pub fn get_z_far(&self) -> f32 {
+        self.camera.z_far
     }
 }
 

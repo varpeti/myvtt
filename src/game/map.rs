@@ -1,18 +1,18 @@
-use std::{
-    collections::HashMap,
-    f32::{self, consts::FRAC_PI_6},
-    fs,
-};
+#![allow(dead_code)]
+
+use std::{collections::HashMap, f32};
 
 use anyhow::{Result, anyhow};
 use hexx::{Hex, HexLayout, HexOrientation};
 use macroquad::prelude::*;
 
+use crate::game::camera::RPGCamera;
+
 pub struct Map {
     radius: f32,
     base_height: f32,
     hex_layout: HexLayout,
-    map: HashMap<(i32, i32), Node>,
+    map: HashMap<Hex, Node>,
     meshes: HashMap<MeshName, Mesh>,
 }
 
@@ -49,11 +49,22 @@ impl Map {
             );
         }
 
-        self.load_from_file(file_path)?;
+        self.load_from_file(file_path).await?;
         Ok(())
     }
 
-    pub fn draw(&self) -> Result<()> {
+    pub async fn load_from_file(&mut self, file_path: &str) -> Result<()> {
+        let raw_content = load_file(file_path).await?;
+        let content = str::from_utf8(&raw_content)?;
+        for (i, line) in content.lines().enumerate() {
+            let (x, y, node) = Node::from_str(line)
+                .map_err(|err| anyhow!("Expected {} | line: @{}: `{}`", err, i + 1, line))?;
+            self.map.insert(Hex::new(x, y), node);
+        }
+        Ok(())
+    }
+
+    pub fn draw(&self, camera: &RPGCamera) -> Result<()> {
         draw_sphere(vec3(0., 0., self.base_height + 1.), 1., None, WHITE);
         draw_sphere(vec3(2., 0., self.base_height + 1.), 1., None, RED);
         draw_sphere(vec3(0., 2., self.base_height + 1.), 1., None, GREEN);
@@ -61,17 +72,30 @@ impl Map {
 
         self.draw_map()?;
 
+        let hex = self.screen_to_hex(mouse_position().into(), camera);
+        let pos = self.hex_layout.hex_to_world_pos(hex);
+        draw_sphere(vec3(pos.x, pos.y, 0.), self.radius / 2., None, PURPLE);
+
+        if let Some((hex, node)) = self.screen_to_node(mouse_position().into(), camera) {
+            let pos = self.hex_layout.hex_to_world_pos(hex);
+            draw_sphere(
+                vec3(pos.x, pos.y, node.height as f32 * self.base_height),
+                self.radius / 2.,
+                None,
+                PINK,
+            );
+        }
+
         Ok(())
     }
 
     fn draw_map(&self) -> Result<()> {
-        for ((x, y), &node) in self.map.iter() {
+        for (&hex, &node) in self.map.iter() {
             let mesh = self
                 .meshes
                 .get(&MeshName::Hex { node })
                 .ok_or_else(|| anyhow!("Node not found!"))?;
 
-            let hex = Hex::new(*x, *y);
             let pos = {
                 let pos = self.hex_layout.hex_to_world_pos(hex);
                 vec2(pos.x, pos.y)
@@ -83,21 +107,41 @@ impl Map {
         Ok(())
     }
 
-    pub fn load_from_file(&mut self, file_path: &str) -> Result<()> {
-        //let content = fs::read_to_string(file_path)?;
-        let content = r#"-01 -01 3 Ground
--01 -00 2 Ground
--00 -01 2 Ground
-+00 +00 1 Ground
-+00 +01 3 Ground
-+01 +00 3 Ground
-+01 +01 4 Ground"#;
-        for (i, line) in content.lines().enumerate() {
-            let (x, y, node) = Node::from_str(line)
-                .map_err(|err| anyhow!("Expected {} | line: @{}: `{}`", err, i + 1, line))?;
-            self.map.insert((x, y), node);
+    pub fn screen_to_hex(&self, point: Vec2, camera: &RPGCamera) -> Hex {
+        let (ray_origin, ray_direction) = camera.screen_to_world_ray(point);
+        self.ray_to_hex(ray_origin, ray_direction)
+    }
+
+    pub fn ray_to_hex(&self, ray_origin: Vec3, ray_direction: Vec3) -> Hex {
+        let t = -ray_origin.z / ray_direction.z;
+        let intersection = ray_origin + ray_direction * t;
+        self.hex_layout
+            .world_pos_to_hex(hexx::Vec2::new(intersection.x, intersection.y))
+    }
+
+    pub fn screen_to_node(&self, point: Vec2, camera: &RPGCamera) -> Option<(Hex, &Node)> {
+        let (ray_origin, ray_direction) = camera.screen_to_world_ray(point);
+        self.ray_to_node(ray_origin, ray_direction)
+    }
+
+    pub fn ray_to_node(&self, ray_origin: Vec3, ray_direction: Vec3) -> Option<(Hex, &Node)> {
+        let mut t = 0.;
+        let step = f32::min(self.base_height / 2., self.radius);
+        loop {
+            let point = ray_origin + ray_direction * t;
+            if point.z < 0. {
+                return None; // Map does not have anything below 0.
+            }
+            let hex = self
+                .hex_layout
+                .world_pos_to_hex(hexx::Vec2::new(point.x, point.y));
+            if let Some(node) = self.map.get(&hex)
+                && point.z <= (node.height as f32 * self.base_height)
+            {
+                return Some((hex, node));
+            }
+            t += step;
         }
-        Ok(())
     }
 }
 
