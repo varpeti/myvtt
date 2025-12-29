@@ -1,15 +1,13 @@
-mod components;
 mod game;
-mod game_config;
-mod game_state;
 
 use anyhow::Result;
 
-use crate::{game::Game, game_config::GameConfig};
+use crate::game::Game;
 
 #[macroquad::main("Hello-Macroquad")]
 async fn main() -> Result<()> {
-    let mut game = Game::new(GameConfig { fullscreen: false });
+    let mut game = Game::default();
+    game.load().await?;
     game.run().await?;
     Ok(())
 }

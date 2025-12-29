@@ -1,11 +1,24 @@
-use crate::game::Game;
-
 use anyhow::Result;
 use macroquad::prelude::*;
 
-impl Game {
-    pub(crate) fn draw_hud(&mut self) -> Result<()> {
-        set_default_camera();
+use crate::game::camera::RPGCamera;
+
+#[derive(Debug)]
+pub struct Hud {}
+
+#[allow(clippy::derivable_impls)]
+impl Default for Hud {
+    fn default() -> Self {
+        Self {}
+    }
+}
+
+impl Hud {
+    pub fn handle_events(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn draw(&mut self, camera: &RPGCamera) -> Result<()> {
         let middle = vec2(screen_width() / 2., screen_height() / 2.);
         draw_hexagon(
             middle.x,
@@ -27,9 +40,9 @@ impl Game {
             &format!(
                 "mouse: {:?}\ncamera: {} {} {}",
                 mouse_position(),
-                self.camera.get_target(),
-                self.camera.get_zoom(),
-                self.camera.get_rotation(),
+                camera.get_target(),
+                camera.get_zoom(),
+                camera.get_rotation(),
             ),
             12.,
             42.,
@@ -37,6 +50,7 @@ impl Game {
             None,
             WHITE,
         );
+
         draw_fps();
         Ok(())
     }
