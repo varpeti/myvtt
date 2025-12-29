@@ -84,7 +84,14 @@ impl Map {
     }
 
     pub fn load_from_file(&mut self, file_path: &str) -> Result<()> {
-        let content = fs::read_to_string(file_path)?;
+        //let content = fs::read_to_string(file_path)?;
+        let content = r#"-01 -01 3 Ground
+-01 -00 2 Ground
+-00 -01 2 Ground
++00 +00 1 Ground
++00 +01 3 Ground
++01 +00 3 Ground
++01 +01 4 Ground"#;
         for (i, line) in content.lines().enumerate() {
             let (x, y, node) = Node::from_str(line)
                 .map_err(|err| anyhow!("Expected {} | line: @{}: `{}`", err, i + 1, line))?;
