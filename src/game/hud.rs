@@ -1,11 +1,10 @@
 use anyhow::Result;
 use macroquad::prelude::*;
 
-use crate::game::camera::RPGCamera;
+use crate::game::{camera::RPGCamera, theme::Theme};
 
 #[derive(Debug)]
 pub struct Hud {}
-
 #[allow(clippy::derivable_impls)]
 impl Default for Hud {
     fn default() -> Self {
@@ -19,23 +18,6 @@ impl Hud {
     }
 
     pub fn draw(&mut self, camera: &RPGCamera) -> Result<()> {
-        // let middle = vec2(screen_width() / 2., screen_height() / 2.);
-        // draw_hexagon(
-        //     middle.x,
-        //     middle.y,
-        //     7.,
-        //     1.,
-        //     true,
-        //     Color::from_rgba(0x19, 0x17, 0x24, 0x80),
-        //     Color::from_rgba(0xe0, 0xde, 0xf4, 0x80),
-        // );
-        // draw_circle(
-        //     middle.x,
-        //     middle.y,
-        //     1.,
-        //     Color::from_rgba(0x19, 0x17, 0x24, 0x80),
-        // );
-
         draw_multiline_text(
             &format!(
                 "mouse: {:?}\ncamera: {} {} {}\norigo on screen: {:?}",
@@ -49,7 +31,7 @@ impl Hud {
             42.,
             32.,
             None,
-            WHITE,
+            Theme::Text.color(),
         );
 
         draw_fps();

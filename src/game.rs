@@ -3,9 +3,11 @@ pub mod game_config;
 pub mod game_state;
 pub mod hud;
 pub mod map;
+pub mod theme;
 
 use crate::game::{
     camera::RPGCamera, game_config::GameConfig, game_state::GameState, hud::Hud, map::Map,
+    theme::Theme,
 };
 
 use anyhow::Result;
@@ -28,7 +30,7 @@ impl Game {
 
     pub async fn run(&mut self) -> Result<()> {
         while !self.state.should_exit {
-            clear_background(Color::from_hex(0x191724));
+            clear_background(Theme::Background.color());
             self.handle_events()?;
             self.draw()?;
             next_frame().await;
