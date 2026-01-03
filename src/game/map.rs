@@ -1,21 +1,33 @@
 #![allow(dead_code)]
 
+mod assets;
+mod node;
+
 use std::{collections::HashMap, f32};
 
 use anyhow::{Result, anyhow};
 use hexx::{Hex, HexLayout, HexOrientation};
 use macroquad::prelude::*;
 
-use crate::game::{camera::RPGCamera, theme::Theme};
+use crate::game::{
+    camera::RPGCamera,
+    map::{
+        assets::{Assets, TextureName},
+        node::Node,
+    },
+    theme::Theme,
+};
 
 pub struct Map {
     radius: f32,
     base_height: f32,
     hex_layout: HexLayout,
     map: HashMap<Hex, Node>,
-    meshes: HashMap<MeshName, Mesh>,
-    materials: HashMap<MaterialName, Material>,
-    textures: HashMap<TextureName, Texture2D>,
+    assets: Assets,
+
+    hoovered_hex: Hex,
+
+    brush_node: Node,
 }
 
 impl Default for Map {
@@ -30,16 +42,17 @@ impl Default for Map {
                 origin: hexx::Vec2::new(0., 0.),
             },
             map: HashMap::new(),
-            meshes: HashMap::new(),
-            materials: HashMap::new(),
-            textures: HashMap::new(),
+            assets: Assets::new(),
+            hoovered_hex: Hex::default(),
+            brush_node: Node::new(1, Theme::SpringGreen),
         }
     }
 }
 impl Map {
     pub async fn load(&mut self, file_path: &str) -> Result<()> {
         let hex_prism_texture = load_texture("assets/img/hex_prism.png").await?;
-        self.textures
+        self.assets
+            .textures
             .insert(TextureName::HexagonalPrims, hex_prism_texture.clone());
 
         self.load_from_file(file_path).await?;
@@ -58,65 +71,97 @@ impl Map {
         Ok(())
     }
 
-    pub fn draw(&self, camera: &RPGCamera) -> Result<()> {
-        if let Some(edge_material) = self.materials.get(&MaterialName::Edge) {
-            gl_use_material(edge_material);
-            self.draw_map()?;
-            gl_use_default_material();
+    pub fn handle_events(&mut self, camera: &RPGCamera) -> Result<()> {
+        let (hex, _node) = self.screen_to_node(mouse_position().into(), camera);
+        self.hoovered_hex = hex;
+
+        if let Some(hoovered_node) = self.map.get_mut(&self.hoovered_hex) {
+            if is_mouse_button_down(MouseButton::Left) {
+                // Replace
+                self.map.insert(self.hoovered_hex, self.brush_node);
+            } else if is_mouse_button_down(MouseButton::Right) {
+                // Remove
+                self.map.remove(&self.hoovered_hex);
+            } else if is_mouse_button_pressed(MouseButton::Middle) {
+                // Copy
+                self.brush_node.height = hoovered_node.height;
+                self.brush_node.color = hoovered_node.color;
+            }
         } else {
-            self.draw_map()?;
+            // Add
+            if is_mouse_button_down(MouseButton::Left) {
+                self.map.insert(self.hoovered_hex, self.brush_node);
+            }
         }
 
-        let hex = self.screen_to_hex(mouse_position().into(), camera);
-        let pos = self.hex_layout.hex_to_world_pos(hex);
-        draw_sphere(
-            vec3(pos.x, pos.y, 0.),
-            self.radius / 2.,
-            None,
-            Theme::HighLight1.color(),
-        );
-
-        if let Some((hex, node)) = self.screen_to_node(mouse_position().into(), camera) {
-            let pos = self.hex_layout.hex_to_world_pos(hex);
-            draw_sphere(
-                vec3(pos.x, pos.y, node.height as f32 * self.base_height),
-                self.radius / 2.,
-                None,
-                Theme::HighLight.color(),
-            );
+        if is_key_pressed(KeyCode::Q) {
+            self.brush_node.height = self.brush_node.height.saturating_add(1);
+        }
+        if is_key_pressed(KeyCode::E) {
+            self.brush_node.height = self.brush_node.height.saturating_sub(1);
         }
 
-        // TODO: Remove
-        draw_sphere(
-            vec3(0., 0., self.base_height + 1.),
-            10.,
-            None,
-            Theme::Text.color(),
-        );
+        if !is_key_down(KeyCode::LeftShift)
+            && !is_key_down(KeyCode::RightShift)
+            && !is_key_down(KeyCode::LeftControl)
+            && !is_key_down(KeyCode::RightControl)
+        {
+            let my = mouse_wheel().1;
+            if my > 0. {
+                self.brush_node.color = self.brush_node.color.next();
+            } else if my < 0. {
+                self.brush_node.color = self.brush_node.color.previous();
+            }
+        }
 
         Ok(())
     }
 
-    fn draw_map(&self) -> Result<()> {
+    pub fn draw(&self, camera: &RPGCamera) -> Result<()> {
+        camera.activate()?;
+
         let hexagonal_prims_texture = self
+            .assets
             .textures
             .get(&TextureName::HexagonalPrims)
-            .ok_or_else(|| anyhow!("Texture TextureName::HexagonalPrims not found!"))?;
+            .cloned();
+
+        self.draw_map(&hexagonal_prims_texture)?;
+
+        let pos = self.hex_layout.hex_to_world_pos(self.hoovered_hex);
+        Node::draw_node(
+            vec2(pos.x, pos.y),
+            self.radius / 1.2,
+            self.brush_node.height as f32 * self.base_height + 1.,
+            hexagonal_prims_texture.clone(),
+            self.brush_node.color.color(),
+        )?;
+
+        Ok(())
+    }
+
+    fn draw_map(&self, hexagonal_prims_texture: &Option<Texture2D>) -> Result<()> {
         for (&hex, &node) in self.map.iter() {
             let pos = {
                 let pos = self.hex_layout.hex_to_world_pos(hex);
                 vec2(pos.x, pos.y)
             };
-
-            let mesh = create_hexagonal_prism(
+            let radius = if hex == self.hoovered_hex {
+                if self.brush_node.height < node.height {
+                    self.radius / 1.3
+                } else {
+                    self.radius / 1.1
+                }
+            } else {
+                self.radius
+            };
+            Node::draw_node(
                 pos,
-                self.radius,
-                self.base_height * node.height as f32,
+                radius,
+                node.height as f32 * self.base_height,
+                hexagonal_prims_texture.clone(),
                 node.color.color(),
-                Theme::Pillar.color(),
-                Some(hexagonal_prims_texture.clone()),
-            );
-            draw_mesh(&mesh);
+            )?;
         }
         Ok(())
     }
@@ -127,155 +172,37 @@ impl Map {
     }
 
     pub fn ray_to_hex(&self, ray_origin: Vec3, ray_direction: Vec3) -> Hex {
+        // TODO: check if ray ever hit z=0. It fails if not.
         let t = -ray_origin.z / ray_direction.z;
         let intersection = ray_origin + ray_direction * t;
         self.hex_layout
             .world_pos_to_hex(hexx::Vec2::new(intersection.x, intersection.y))
     }
 
-    pub fn screen_to_node(&self, point: Vec2, camera: &RPGCamera) -> Option<(Hex, &Node)> {
+    pub fn screen_to_node(&self, point: Vec2, camera: &RPGCamera) -> (Hex, Option<&Node>) {
         let (ray_origin, ray_direction) = camera.screen_to_world_ray(point);
         self.ray_to_node(ray_origin, ray_direction)
     }
 
-    pub fn ray_to_node(&self, ray_origin: Vec3, ray_direction: Vec3) -> Option<(Hex, &Node)> {
+    pub fn ray_to_node(&self, ray_origin: Vec3, ray_direction: Vec3) -> (Hex, Option<&Node>) {
+        // TODO: check if ray ever hit z=0. It will stuck if not
         let mut t = 0.;
         let step = f32::min(self.base_height / 2., self.radius);
         loop {
             let point = ray_origin + ray_direction * t;
-            if point.z < 0. {
-                return None; // Map does not have anything below 0.
-            }
             let hex = self
                 .hex_layout
                 .world_pos_to_hex(hexx::Vec2::new(point.x, point.y));
+            if point.z <= 0. {
+                // Map does not have anything below 0.
+                return (hex, None);
+            }
             if let Some(node) = self.map.get(&hex)
                 && point.z <= (node.height as f32 * self.base_height)
             {
-                return Some((hex, node));
+                return (hex, Some(node));
             }
             t += step;
         }
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Node {
-    height: u8,
-    color: Theme,
-}
-impl Node {
-    pub fn new(height: u8, color: Theme) -> Self {
-        Self { height, color }
-    }
-
-    pub fn from_str(line: &str) -> Result<(i32, i32, Self)> {
-        let mut data = line.split_whitespace();
-        let x = data
-            .next()
-            .ok_or_else(|| anyhow!("'x'"))?
-            .parse::<i32>()
-            .map_err(|err| anyhow!("'x' as i32: `{}`", err))?;
-        let y = data
-            .next()
-            .ok_or_else(|| anyhow!("'y'"))?
-            .parse::<i32>()
-            .map_err(|err| anyhow!("'y' as i32: `{}`", err))?;
-        let height = data
-            .next()
-            .ok_or_else(|| anyhow!("'height'"))?
-            .parse::<u8>()
-            .map_err(|err| anyhow!("'height' as u8: `{}`", err))?;
-        let node_type = Theme::from_str(data.next().ok_or_else(|| anyhow!("'color'"))?)
-            .map_err(|err| anyhow!("'color' as Theme `{}`", err))?;
-        Ok((x, y, Self::new(height, node_type)))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum MeshName {
-    Hex { node: Node },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum MaterialName {
-    Edge,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum TextureName {
-    HexagonalPrims,
-}
-
-fn create_hexagonal_prism(
-    pos: Vec2,
-    radius: f32,
-    height: f32,
-    top_color: Color,
-    bottom_color: Color,
-    texture: Option<Texture2D>,
-) -> Mesh {
-    let mut mesh = Mesh {
-        vertices: vec![],
-        indices: vec![
-            // Top face triangles (first 6 vertices are bottom face)
-            // 0, 2, 4, // First bottom triangle
-            // 0, 4, 6, // Second bottom triangle
-            // 0, 6, 8, // Third bottom triangle
-            // 0, 8, 10, // Fourth bottom triangle
-            // Top face triangles (last 6 vertices are top face)
-            1, 3, 5, // First top triangle
-            1, 5, 7, // Second top triangle
-            1, 7, 9, // Third top triangle
-            1, 9, 11, // Fourth top triangle
-            // Side face triangles (connecting bottom and top vertices)
-            0, 1, 2, // Side 1, triangle 1
-            2, 1, 3, // Side 1, triangle 2
-            2, 3, 4, // Side 2, triangle 1
-            4, 3, 5, // Side 2, triangle 2
-            4, 5, 6, // Side 3, triangle 1
-            6, 5, 7, // Side 3, triangle 2
-            6, 7, 8, // Side 4, triangle 1
-            8, 7, 9, // Side 4, triangle 2
-            8, 9, 10, // Side 5, triangle 1
-            10, 9, 11, // Side 5, triangle 2
-            10, 11, 0, // Side 6, triangle 1
-            0, 11, 1, // Side 6, triangle 2
-        ],
-        texture,
-    };
-
-    for i in 0..6 {
-        let angle = f32::consts::FRAC_PI_3 * i as f32 + f32::consts::FRAC_PI_6;
-        let direction = Vec2::from_angle(angle);
-        let point = direction * radius + pos;
-        let uv_bottom = (direction + vec2(1., 1.)) * 0.5;
-        let uv_top = uv_bottom;
-        mesh.vertices.push(Vertex {
-            position: vec3(point.x, point.y, 0.),
-            color: bottom_color.into(),
-            uv: uv_bottom,
-            normal: Vec4::default(),
-        });
-        mesh.vertices.push(Vertex {
-            position: vec3(point.x, point.y, height),
-            color: top_color.into(),
-            uv: uv_top,
-            normal: Vec4::default(),
-        })
-    }
-    mesh
-}
-
-// fn modify_hexagonal_prism(mesh: &Mesh, pos: Vec2) -> Mesh {
-//     let mut mesh = Mesh {
-//         vertices: mesh.vertices.clone(),
-//         indices: mesh.indices.clone(),
-//         texture: mesh.texture.clone(),
-//     };
-//     for v in mesh.vertices.iter_mut() {
-//         v.position.x += pos.x;
-//         v.position.y += pos.y;
-//     }
-//     mesh
-// }

@@ -57,7 +57,7 @@ impl Default for RPGCamera {
             camera_speed: 2.,
             rotation_speed: f32::consts::FRAC_PI_6,
             zoom_speed: 32.,
-            min_zoom: 8. * 16.,
+            min_zoom: 16. * 16.,
             max_zoom: 2048.,
             smoothing_factor_target: 5.,
             smoothing_factor_rotation: 5.,
@@ -121,7 +121,7 @@ impl RPGCamera {
         self.camera.position = calculate_position(self.camera.target, self.rotation, self.zoom);
     }
 
-    pub fn activate(&mut self) -> Result<()> {
+    pub fn activate(&self) -> Result<()> {
         set_camera(&self.camera);
         Ok(())
     }

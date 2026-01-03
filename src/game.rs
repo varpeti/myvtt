@@ -1,14 +1,10 @@
 pub mod camera;
 pub mod game_config;
-pub mod game_state;
 pub mod hud;
 pub mod map;
 pub mod theme;
 
-use crate::game::{
-    camera::RPGCamera, game_config::GameConfig, game_state::GameState, hud::Hud, map::Map,
-    theme::Theme,
-};
+use crate::game::{camera::RPGCamera, game_config::GameConfig, hud::Hud, map::Map, theme::Theme};
 
 use anyhow::Result;
 use macroquad::prelude::*;
@@ -16,10 +12,10 @@ use macroquad::prelude::*;
 #[derive(Default)]
 pub struct Game {
     config: GameConfig,
-    state: GameState,
     camera: RPGCamera,
     map: Map,
     hud: Hud,
+    state: GameState,
 }
 
 impl Game {
@@ -29,28 +25,43 @@ impl Game {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        while !self.state.should_exit {
+        loop {
             clear_background(Theme::Background.color());
             self.handle_events()?;
             self.draw()?;
             next_frame().await;
         }
-        Ok(())
     }
 
     pub fn handle_events(&mut self) -> Result<()> {
-        self.camera.handle_events()?;
-        self.config.handle_events()?;
-        self.state.handle_events()?;
-        self.hud.handle_events()?;
+        match self.state {
+            GameState::MapEditor => {
+                self.camera.handle_events()?;
+                self.map.handle_events(&self.camera)?;
+                self.config.handle_events()?;
+                self.hud.handle_events()?;
+            }
+        }
         Ok(())
     }
 
     pub fn draw(&mut self) -> Result<()> {
-        self.camera.activate()?;
-        self.map.draw(&self.camera)?;
-        set_default_camera();
-        self.hud.draw(&self.camera)?;
+        match self.state {
+            GameState::MapEditor => {
+                self.map.draw(&self.camera)?;
+                self.hud.draw(&self.camera)?;
+            }
+        }
         Ok(())
     }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
+pub enum GameState {
+    //MainMenu,
+    #[default]
+    MapEditor,
+    //MapPlayer,
+    //ExitMenu,
+    //Exiting,
 }

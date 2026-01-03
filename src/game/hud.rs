@@ -18,6 +18,8 @@ impl Hud {
     }
 
     pub fn draw(&mut self, camera: &RPGCamera) -> Result<()> {
+        set_default_camera();
+
         draw_multiline_text(
             &format!(
                 "mouse: {:?}\ncamera: {} {} {}\norigo on screen: {:?}",
@@ -31,7 +33,7 @@ impl Hud {
             42.,
             32.,
             None,
-            Theme::Text.color(),
+            Theme::LotusCyan.color(),
         );
 
         draw_fps();
