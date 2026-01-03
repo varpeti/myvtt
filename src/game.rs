@@ -20,24 +20,24 @@ pub struct Game {
 
 impl Game {
     pub async fn load(&mut self) -> Result<()> {
-        self.map.load("assets/map/001.map").await?;
+        self.map.load("assets/map/001").await?;
         Ok(())
     }
 
     pub async fn run(&mut self) -> Result<()> {
         loop {
             clear_background(Theme::Background.color());
-            self.handle_events()?;
-            self.draw()?;
+            self.handle_events().await?;
+            self.draw().await?;
             next_frame().await;
         }
     }
 
-    pub fn handle_events(&mut self) -> Result<()> {
+    pub async fn handle_events(&mut self) -> Result<()> {
         match self.state {
             GameState::MapEditor => {
                 self.camera.handle_events()?;
-                self.map.handle_events(&self.camera)?;
+                self.map.handle_events(&self.camera).await?;
                 self.config.handle_events()?;
                 self.hud.handle_events()?;
             }
@@ -45,11 +45,11 @@ impl Game {
         Ok(())
     }
 
-    pub fn draw(&mut self) -> Result<()> {
+    pub async fn draw(&mut self) -> Result<()> {
         match self.state {
             GameState::MapEditor => {
                 self.map.draw(&self.camera)?;
-                self.hud.draw(&self.camera)?;
+                self.hud.draw(&self.camera, &self.map)?;
             }
         }
         Ok(())

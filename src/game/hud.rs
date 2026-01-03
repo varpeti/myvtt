@@ -1,7 +1,7 @@
 use anyhow::Result;
 use macroquad::prelude::*;
 
-use crate::game::{camera::RPGCamera, theme::Theme};
+use crate::game::{camera::RPGCamera, map::Map, theme::Theme};
 
 #[derive(Debug)]
 pub struct Hud {}
@@ -17,17 +17,26 @@ impl Hud {
         Ok(())
     }
 
-    pub fn draw(&mut self, camera: &RPGCamera) -> Result<()> {
+    pub fn draw(&mut self, camera: &RPGCamera, map: &Map) -> Result<()> {
         set_default_camera();
+
+        let (mx, my) = mouse_position();
+        let (hhex, hnode) = map.hoovered_node();
+        let target = camera.get_target();
 
         draw_multiline_text(
             &format!(
-                "mouse: {:?}\ncamera: {} {} {}\norigo on screen: {:?}",
-                mouse_position(),
-                camera.get_target(),
-                camera.get_zoom(),
+                "mouse: {:+05} {:+05}\nhoovered: {:+05} {:+05} {:?}\nbrush: {:?}\ncamera: {:+5} {:+5} {} {:.3}",
+                mx,
+                my,
+                hhex.x,
+                hhex.y,
+                hnode,
+                map.brush_node(),
+                camera.get_target().x as i32,
+                camera.get_target().y as i32,
+                camera.get_zoom() as i32,
                 camera.get_rotation(),
-                camera.world_to_screen(vec3(0., 0., 0.)),
             ),
             12.,
             42.,

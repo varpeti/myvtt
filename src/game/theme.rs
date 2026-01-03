@@ -2,9 +2,9 @@
 
 use macroquad::prelude::Color;
 use strum::VariantArray;
-use strum_macros::{EnumString, VariantArray};
+use strum_macros::{EnumString, IntoStaticStr, VariantArray};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, VariantArray)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, IntoStaticStr, VariantArray)]
 pub enum Theme {
     SumiInk0,      //  #16161D
     SumiInk1,      //  #181820

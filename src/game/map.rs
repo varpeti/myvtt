@@ -3,10 +3,11 @@
 mod assets;
 mod node;
 
-use std::{collections::HashMap, f32};
+use std::io::Write;
 
 use anyhow::{Result, anyhow};
 use hexx::{Hex, HexLayout, HexOrientation};
+use indexmap::IndexMap;
 use macroquad::prelude::*;
 
 use crate::game::{
@@ -22,11 +23,11 @@ pub struct Map {
     radius: f32,
     base_height: f32,
     hex_layout: HexLayout,
-    map: HashMap<Hex, Node>,
+    map: IndexMap<Hex, Node>,
     assets: Assets,
 
+    current_map: String,
     hoovered_hex: Hex,
-
     brush_node: Node,
 }
 
@@ -41,8 +42,9 @@ impl Default for Map {
                 orientation: HexOrientation::Pointy,
                 origin: hexx::Vec2::new(0., 0.),
             },
-            map: HashMap::new(),
+            map: IndexMap::new(),
             assets: Assets::new(),
+            current_map: String::new(),
             hoovered_hex: Hex::default(),
             brush_node: Node::new(1, Theme::SpringGreen),
         }
@@ -56,13 +58,13 @@ impl Map {
             .insert(TextureName::HexagonalPrims, hex_prism_texture.clone());
 
         self.load_from_file(file_path).await?;
+        self.current_map = file_path.to_string();
 
         Ok(())
     }
 
-    pub async fn load_from_file(&mut self, file_path: &str) -> Result<()> {
-        let raw_content = load_file(file_path).await?;
-        let content = str::from_utf8(&raw_content)?;
+    async fn load_from_file(&mut self, file_path: &str) -> Result<()> {
+        let content = load_string(file_path).await?;
         for (i, line) in content.lines().enumerate() {
             let (x, y, node) = Node::from_str(line)
                 .map_err(|err| anyhow!("Expected {} | line: @{}: `{}`", err, i + 1, line))?;
@@ -71,7 +73,23 @@ impl Map {
         Ok(())
     }
 
-    pub fn handle_events(&mut self, camera: &RPGCamera) -> Result<()> {
+    async fn save(&self, file_path: &str) -> Result<()> {
+        #[cfg(target_arch = "wasm32")]
+        {
+            // File saving not implemented yet for wasm32
+            return Ok(());
+        }
+
+        let mut file = std::fs::File::create(file_path)?;
+        for (hex, node) in self.map.iter() {
+            let color: &'static str = node.color.into();
+            let line = format!("{:+2} {:+2} {:2} {}\n", hex.x, hex.y, node.height, color);
+            file.write_all(line.as_bytes())?;
+        }
+        Ok(())
+    }
+
+    pub async fn handle_events(&mut self, camera: &RPGCamera) -> Result<()> {
         let (hex, _node) = self.screen_to_node(mouse_position().into(), camera);
         self.hoovered_hex = hex;
 
@@ -79,9 +97,11 @@ impl Map {
             if is_mouse_button_down(MouseButton::Left) {
                 // Replace
                 self.map.insert(self.hoovered_hex, self.brush_node);
+                self.save(&self.current_map).await?;
             } else if is_mouse_button_down(MouseButton::Right) {
                 // Remove
-                self.map.remove(&self.hoovered_hex);
+                self.map.swap_remove(&self.hoovered_hex);
+                self.save(&self.current_map).await?;
             } else if is_mouse_button_pressed(MouseButton::Middle) {
                 // Copy
                 self.brush_node.height = hoovered_node.height;
@@ -91,6 +111,7 @@ impl Map {
             // Add
             if is_mouse_button_down(MouseButton::Left) {
                 self.map.insert(self.hoovered_hex, self.brush_node);
+                self.save(&self.current_map).await?;
             }
         }
 
@@ -204,5 +225,17 @@ impl Map {
             }
             t += step;
         }
+    }
+
+    pub fn hoovered_hex(&self) -> Hex {
+        self.hoovered_hex
+    }
+
+    pub fn hoovered_node(&self) -> (Hex, Option<&Node>) {
+        (self.hoovered_hex, self.map.get(&self.hoovered_hex))
+    }
+
+    pub fn brush_node(&self) -> Node {
+        self.brush_node
     }
 }
