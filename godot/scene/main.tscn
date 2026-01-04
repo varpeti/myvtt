@@ -1,0 +1,18 @@
+[gd_scene load_steps=2 format=3 uid="uid://cebbf7tfk1sub"]
+
+[ext_resource type="PackedScene" uid="uid://dhphilin1d8em" path="res://scene/hexagonal_prims.tscn" id="1_o5qli"]
+
+[node name="Main" type="Node3D"]
+
+[node name="HexagonalPrims" parent="." instance=ExtResource("1_o5qli")]
+
+[node name="Sun1" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.38268343, 0.9238795, 0, -0.9238795, 0.38268343, 0, 100, 0)
+shadow_enabled = true
+
+[node name="Sun2" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-1, 8.07681e-08, -3.3455244e-08, 0, 0.3826834, 0.92387944, 8.742278e-08, 0.92387944, -0.3826834, 0, 100, 0)
+shadow_enabled = true
+
+[node name="RPGCamera" type="RPGCamera" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5.3974056, 0)
