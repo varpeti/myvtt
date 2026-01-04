@@ -158,6 +158,28 @@ impl Map {
             self.brush_node.color.color(),
         )?;
 
+        //TODO: Remove
+        let pos = self.hex_layout.hex_to_world_pos(Hex::new(-2, 0));
+        let pos = vec3(pos.x, pos.y, self.base_height * 5.);
+        let rotation = camera.get_rotation();
+        let half_width = self.radius / 3.;
+        let height = self.radius;
+        let size = vec2(rotation.cos(), -rotation.sin()) * half_width;
+        let color = Theme::LotusYellow4.color();
+
+        let vertices = vec![
+            Vertex::new2(pos + vec3(-size.x, -size.y, 0.), vec2(0., 0.), color),
+            Vertex::new2(pos + vec3(-size.x, -size.y, height), vec2(0., 1.), color),
+            Vertex::new2(pos + vec3(size.x, size.y, height), vec2(1., 1.), color),
+            Vertex::new2(pos + vec3(size.x, size.y, 0.), vec2(1., 0.), color),
+        ];
+        let mesh = Mesh {
+            vertices,
+            indices: vec![0, 1, 2, 0, 3, 2],
+            texture: None,
+        };
+        draw_mesh(&mesh);
+
         Ok(())
     }
 
