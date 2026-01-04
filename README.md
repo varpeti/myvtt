@@ -1,10 +1,3 @@
 # WIP 👷
 
-## Build & Run
-
-```bash
-# Native
-cargo run -r
-# Web (requires basic-http-server `cargo install basic-http-server` )
-cargo build -r --target wasm32-unknown-unknown && ~/.cargo/bin/basic-http-server .
-```
+Testing Rust game engines. (Currently: Godot with Rust)
