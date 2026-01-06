@@ -7,7 +7,7 @@ height = 1.5
 radial_segments = 6
 cap_bottom = false
 
-[node name="HexagonalPrims" type="Node3D"]
+[node name="HexagonalPrism" type="Node3D"]
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)

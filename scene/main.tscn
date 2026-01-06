@@ -1,10 +1,37 @@
-[gd_scene load_steps=2 format=3 uid="uid://cebbf7tfk1sub"]
+[gd_scene load_steps=6 format=4 uid="uid://cebbf7tfk1sub"]
 
-[ext_resource type="PackedScene" uid="uid://dhphilin1d8em" path="res://scene/hexagonal_prims.tscn" id="1_o5qli"]
+[ext_resource type="PackedScene" uid="uid://dhphilin1d8em" path="res://scene/hexagonal_prism.tscn" id="1_o5qli"]
+[ext_resource type="Texture2D" uid="uid://bqtll3njmh4t1" path="res://assets/hexes.png" id="2_wp4xf"]
+[ext_resource type="Script" uid="uid://pk6rcqs8k3hx" path="res://scene/theme.gd" id="3_brvut"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_0ha60"]
+texture = ExtResource("2_wp4xf")
+0:0/0 = 0
+1:0/0 = 0
+2:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+2:1/0 = 0
+0:2/0 = 0
+1:2/0 = 0
+2:2/0 = 0
+0:3/0 = 0
+1:3/0 = 0
+2:3/0 = 0
+0:4/0 = 0
+1:4/0 = 0
+2:4/0 = 0
+0:5/0 = 0
+1:5/0 = 0
+2:5/0 = 0
+
+[sub_resource type="TileSet" id="TileSet_4j5ol"]
+tile_shape = 3
+sources/1 = SubResource("TileSetAtlasSource_0ha60")
 
 [node name="Main" type="Node3D"]
 
-[node name="HexagonalPrims" parent="." instance=ExtResource("1_o5qli")]
+[node name="HexagonalPrism" parent="." instance=ExtResource("1_o5qli")]
 
 [node name="Sun1" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.38268343, 0.9238795, 0, -0.9238795, 0.38268343, 0, 100, 0)
@@ -16,3 +43,12 @@ shadow_enabled = true
 
 [node name="RPGCamera" type="RPGCamera" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5.3974056, 0)
+
+[node name="Hexmap" type="Node2D" parent="."]
+
+[node name="L1" type="TileMapLayer" parent="Hexmap"]
+tile_map_data = PackedByteArray("AAD9//z/AQAAAAAAAAD8//3/AQABAAAAAAD9//7/AQABAAAAAAD8////AQABAAAAAAD9/wAAAQABAAAAAAD8/wEAAQABAAAAAAD9/wIAAQABAAAAAAD8/wMAAQAAAAAAAAD9/wMAAQAAAAAAAAD+/wMAAQAAAAAAAAD//wMAAQAAAAAAAAAAAAMAAQAAAAAAAAABAAMAAQAAAAAAAAACAAMAAQAAAAAAAAADAAMAAQAAAAAAAAD7/wMAAQAAAAAAAAD8/wIAAQAAAAAAAAD7/wEAAQAAAAAAAAD8/wAAAQAAAAAAAAD7////AQAAAAAAAAD8//7/AQAAAAAAAAD7//3/AQAAAAAAAAD8//z/AQAAAAAAAAAEAAMAAQAAAAAAAAD+//z/AQAAAAAAAAD///z/AQAAAAAAAAAAAPz/AQAAAAAAAAABAPz/AQAAAAAAAAACAPz/AQAAAAAAAAADAPz/AQAAAAAAAAAEAPz/AQAAAAAAAAAFAPz/AQAAAAAAAAAEAP3/AQAAAAAAAAAFAP7/AQAAAAAAAAAEAP//AQAAAAAAAAAFAAAAAQAAAAAAAAAEAAEAAQAAAAAAAAAFAAIAAQAAAAAAAAAEAAIAAQABAAAAAAADAAEAAQABAAAAAAAEAAAAAQABAAAAAAADAP//AQABAAAAAAAEAP7/AQABAAAAAAADAP3/AQABAAAAAAACAP3/AQABAAAAAAABAP3/AQABAAAAAAAAAP3/AQABAAAAAAD///3/AQABAAAAAAD+//3/AQABAAAAAAD9//3/AQABAAAAAAD+//7/AQACAAAAAAD///7/AQACAAAAAAAAAP7/AQACAAAAAAABAP7/AQACAAAAAAACAP7/AQACAAAAAAADAP7/AQACAAAAAAACAP//AQACAAAAAAABAP//AQAAAAEAAAAAAP//AQAAAAEAAAD/////AQAAAAEAAAD+////AQAAAAEAAAD9////AQACAAAAAAD+/wAAAQACAAAAAAD//wAAAQAAAAEAAAAAAAAAAQAAAAEAAAABAAAAAQAAAAEAAAACAAAAAQAAAAEAAAADAAAAAQACAAAAAAACAAEAAQACAAAAAAABAAEAAQACAAAAAAAAAAEAAQACAAAAAAD//wEAAQACAAAAAAD+/wEAAQACAAAAAAD9/wEAAQACAAAAAAD+/wIAAQABAAAAAAD//wIAAQABAAAAAAAAAAIAAQABAAAAAAABAAIAAQABAAAAAAACAAIAAQABAAAAAAADAAIAAQABAAAAAAA=")
+tile_set = SubResource("TileSet_4j5ol")
+
+[node name="Theme" type="Node" parent="."]
+script = ExtResource("3_brvut")
