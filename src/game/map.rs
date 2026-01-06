@@ -1,263 +1,148 @@
 #![allow(dead_code)]
 
-mod assets;
-mod node;
+mod tiles;
 
-use std::io::Write;
+use std::collections::HashMap;
 
-use anyhow::{Result, anyhow};
-use hexx::{Hex, HexLayout, HexOrientation};
-use indexmap::IndexMap;
+use anyhow::Result;
+use hexx::{Hex, HexLayout};
 use macroquad::prelude::*;
 
 use crate::game::{
-    camera::RPGCamera,
-    map::{
-        assets::{Assets, TextureName},
-        node::Node,
-    },
-    theme::Theme,
+    events::{Event, Events},
+    map::tiles::{Tile, TileType},
+    theme::{Theme, ThemeColor},
 };
 
+#[derive(Debug)]
 pub struct Map {
-    radius: f32,
-    base_height: f32,
     hex_layout: HexLayout,
-    map: IndexMap<Hex, Node>,
-    assets: Assets,
-
-    current_map: String,
-    hoovered_hex: Hex,
-    brush_node: Node,
+    hex_size: f32,
+    tiles: HashMap<Hex, Tile>,
+    brush: Tile,
 }
 
 impl Default for Map {
     fn default() -> Self {
-        let radius = 32.;
+        let tiles = HashMap::from([
+            (Hex::new(0, 0), Tile::new(TileType::Empty, 0)),
+            (Hex::new(-1, 2), Tile::new(TileType::Small, 0)),
+            (Hex::new(0, 2), Tile::new(TileType::Small, 1)),
+            (Hex::new(1, 2), Tile::new(TileType::Small, 2)),
+            (Hex::new(2, 2), Tile::new(TileType::Small, 3)),
+            (Hex::new(3, 2), Tile::new(TileType::Small, 4)),
+            (Hex::new(4, 2), Tile::new(TileType::Small, 5)),
+            (Hex::new(-2, 4), Tile::new(TileType::Half, 0)),
+            (Hex::new(-1, 4), Tile::new(TileType::Half, 1)),
+            (Hex::new(0, 4), Tile::new(TileType::Half, 2)),
+            (Hex::new(1, 4), Tile::new(TileType::Half, 3)),
+            (Hex::new(2, 4), Tile::new(TileType::Half, 4)),
+            (Hex::new(3, 4), Tile::new(TileType::Half, 5)),
+            (Hex::new(-3, 6), Tile::new(TileType::Full, 0)),
+        ]);
+
+        let hex_size = 32.;
         Self {
-            radius,
-            base_height: 16.,
             hex_layout: HexLayout {
-                scale: hexx::Vec2::new(radius, radius),
-                orientation: HexOrientation::Pointy,
-                origin: hexx::Vec2::new(0., 0.),
+                orientation: hexx::HexOrientation::Pointy,
+                origin: hexx::Vec2::ZERO,
+                scale: hexx::Vec2::new(hex_size, hex_size),
             },
-            map: IndexMap::new(),
-            assets: Assets::new(),
-            current_map: String::new(),
-            hoovered_hex: Hex::default(),
-            brush_node: Node::new(1, Theme::SpringGreen),
+            hex_size,
+            tiles,
+            brush: Tile::new(TileType::Empty, 0),
         }
     }
 }
+
 impl Map {
-    pub async fn load(&mut self, file_path: &str) -> Result<()> {
-        let hex_prism_texture = load_texture("assets/img/hex_prism.png").await?;
-        self.assets
-            .textures
-            .insert(TextureName::HexagonalPrims, hex_prism_texture.clone());
-
-        self.load_from_file(file_path).await?;
-        self.current_map = file_path.to_string();
-
-        Ok(())
-    }
-
-    async fn load_from_file(&mut self, file_path: &str) -> Result<()> {
-        let content = load_string(file_path).await?;
-        for (i, line) in content.lines().enumerate() {
-            let (x, y, node) = Node::from_str(line)
-                .map_err(|err| anyhow!("Expected {} | line: @{}: `{}`", err, i + 1, line))?;
-            self.map.insert(Hex::new(x, y), node);
+    pub fn handle_events(&mut self, events: &mut Events, _dt: f32) -> Result<()> {
+        if events.pop(&Event::BrushPickEmpty) {
+            self.brush.tile_type = TileType::Empty;
         }
-        Ok(())
-    }
-
-    async fn save(&self, file_path: &str) -> Result<()> {
-        #[cfg(target_arch = "wasm32")]
-        {
-            // File saving not implemented yet for wasm32
-            return Ok(());
+        if events.pop(&Event::BrushPickSmall) {
+            self.brush.tile_type = TileType::Small;
         }
-
-        let mut file = std::fs::File::create(file_path)?;
-        for (hex, node) in self.map.iter() {
-            let color: &'static str = node.color.into();
-            let line = format!("{:+2} {:+2} {:2} {}\n", hex.x, hex.y, node.height, color);
-            file.write_all(line.as_bytes())?;
+        if events.pop(&Event::BrushPickHalf) {
+            self.brush.tile_type = TileType::Half;
         }
-        Ok(())
-    }
-
-    pub async fn handle_events(&mut self, camera: &RPGCamera) -> Result<()> {
-        let (hex, _node) = self.screen_to_node(mouse_position().into(), camera);
-        self.hoovered_hex = hex;
-
-        if let Some(hoovered_node) = self.map.get_mut(&self.hoovered_hex) {
-            if is_mouse_button_down(MouseButton::Left) {
-                // Replace
-                self.map.insert(self.hoovered_hex, self.brush_node);
-                self.save(&self.current_map).await?;
-            } else if is_mouse_button_down(MouseButton::Right) {
-                // Remove
-                self.map.swap_remove(&self.hoovered_hex);
-                self.save(&self.current_map).await?;
-            } else if is_mouse_button_pressed(MouseButton::Middle) {
-                // Copy
-                self.brush_node.height = hoovered_node.height;
-                self.brush_node.color = hoovered_node.color;
-            }
-        } else {
-            // Add
-            if is_mouse_button_down(MouseButton::Left) {
-                self.map.insert(self.hoovered_hex, self.brush_node);
-                self.save(&self.current_map).await?;
-            }
+        if events.pop(&Event::BrushPickFull) {
+            self.brush.tile_type = TileType::Full;
         }
-
-        if is_key_pressed(KeyCode::Q) {
-            self.brush_node.height = self.brush_node.height.saturating_add(1);
+        if events.pop(&Event::BrushRotateClockwise) {
+            self.brush.rotation(1);
         }
-        if is_key_pressed(KeyCode::E) {
-            self.brush_node.height = self.brush_node.height.saturating_sub(1);
-        }
-
-        if !is_key_down(KeyCode::LeftShift)
-            && !is_key_down(KeyCode::RightShift)
-            && !is_key_down(KeyCode::LeftControl)
-            && !is_key_down(KeyCode::RightControl)
-        {
-            let my = mouse_wheel().1;
-            if my > 0. {
-                self.brush_node.color = self.brush_node.color.next();
-            } else if my < 0. {
-                self.brush_node.color = self.brush_node.color.previous();
-            }
+        if events.pop(&Event::BrushRotateAntiClockwise) {
+            self.brush.rotation(-1);
         }
 
         Ok(())
     }
 
-    pub fn draw(&self, camera: &RPGCamera) -> Result<()> {
-        camera.activate()?;
-
-        let hexagonal_prims_texture = self
-            .assets
-            .textures
-            .get(&TextureName::HexagonalPrims)
-            .cloned();
-
-        self.draw_map(&hexagonal_prims_texture)?;
-
-        let pos = self.hex_layout.hex_to_world_pos(self.hoovered_hex);
-        Node::draw_node(
-            vec2(pos.x, pos.y),
-            self.radius / 1.2,
-            self.brush_node.height as f32 * self.base_height + 1.,
-            hexagonal_prims_texture.clone(),
-            self.brush_node.color.color(),
-        )?;
-
-        //TODO: Remove
-        let pos = self.hex_layout.hex_to_world_pos(Hex::new(-2, 0));
-        let pos = vec3(pos.x, pos.y, self.base_height * 5.);
-        let rotation = camera.get_rotation();
-        let half_width = self.radius / 3.;
-        let height = self.radius;
-        let size = vec2(rotation.cos(), -rotation.sin()) * half_width;
-        let color = Theme::LotusYellow4.color();
-
-        let vertices = vec![
-            Vertex::new2(pos + vec3(-size.x, -size.y, 0.), vec2(0., 0.), color),
-            Vertex::new2(pos + vec3(-size.x, -size.y, height), vec2(0., 1.), color),
-            Vertex::new2(pos + vec3(size.x, size.y, height), vec2(1., 1.), color),
-            Vertex::new2(pos + vec3(size.x, size.y, 0.), vec2(1., 0.), color),
-        ];
-        let mesh = Mesh {
-            vertices,
-            indices: vec![0, 1, 2, 0, 3, 2],
-            texture: None,
-        };
-        draw_mesh(&mesh);
-
-        Ok(())
-    }
-
-    fn draw_map(&self, hexagonal_prims_texture: &Option<Texture2D>) -> Result<()> {
-        for (&hex, &node) in self.map.iter() {
-            let pos = {
-                let pos = self.hex_layout.hex_to_world_pos(hex);
-                vec2(pos.x, pos.y)
-            };
-            let radius = if hex == self.hoovered_hex {
-                if self.brush_node.height < node.height {
-                    self.radius / 1.3
-                } else {
-                    self.radius / 1.1
-                }
-            } else {
-                self.radius
-            };
-            Node::draw_node(
+    pub fn draw_map(&mut self, theme: &Theme) {
+        for (hex, tile) in self.tiles.iter() {
+            let pos = h2q(self.hex_layout.hex_to_world_pos(*hex));
+            tile.draw(
                 pos,
-                radius,
-                node.height as f32 * self.base_height,
-                hexagonal_prims_texture.clone(),
-                node.color.color(),
-            )?;
-        }
-        Ok(())
-    }
-
-    pub fn screen_to_hex(&self, point: Vec2, camera: &RPGCamera) -> Hex {
-        let (ray_origin, ray_direction) = camera.screen_to_world_ray(point);
-        self.ray_to_hex(ray_origin, ray_direction)
-    }
-
-    pub fn ray_to_hex(&self, ray_origin: Vec3, ray_direction: Vec3) -> Hex {
-        // TODO: check if ray ever hit z=0. It fails if not.
-        let t = -ray_origin.z / ray_direction.z;
-        let intersection = ray_origin + ray_direction * t;
-        self.hex_layout
-            .world_pos_to_hex(hexx::Vec2::new(intersection.x, intersection.y))
-    }
-
-    pub fn screen_to_node(&self, point: Vec2, camera: &RPGCamera) -> (Hex, Option<&Node>) {
-        let (ray_origin, ray_direction) = camera.screen_to_world_ray(point);
-        self.ray_to_node(ray_origin, ray_direction)
-    }
-
-    pub fn ray_to_node(&self, ray_origin: Vec3, ray_direction: Vec3) -> (Hex, Option<&Node>) {
-        // TODO: check if ray ever hit z=0. It will stuck if not
-        let mut t = 0.;
-        let step = f32::min(self.base_height / 2., self.radius);
-        loop {
-            let point = ray_origin + ray_direction * t;
-            let hex = self
-                .hex_layout
-                .world_pos_to_hex(hexx::Vec2::new(point.x, point.y));
-            if point.z <= 0. {
-                // Map does not have anything below 0.
-                return (hex, None);
-            }
-            if let Some(node) = self.map.get(&hex)
-                && point.z <= (node.height as f32 * self.base_height)
-            {
-                return (hex, Some(node));
-            }
-            t += step;
+                self.hex_size - 1.,
+                theme.color(ThemeColor::Lighter),
+                theme.color(ThemeColor::Dark),
+            );
         }
     }
 
-    pub fn hoovered_hex(&self) -> Hex {
-        self.hoovered_hex
+    pub fn draw_camera_target(&self, theme: &Theme, camera: &Camera2D) {
+        let pos = self
+            .hex_layout
+            .hex_to_world_pos(self.hex_layout.world_pos_to_hex(q2h(camera.target)));
+
+        draw_hexagon(
+            pos.x,
+            pos.y,
+            self.hex_size,
+            2.,
+            true,
+            theme.color(ThemeColor::Normal),
+            Color::default().with_alpha(0.),
+        );
     }
 
-    pub fn hoovered_node(&self) -> (Hex, Option<&Node>) {
-        (self.hoovered_hex, self.map.get(&self.hoovered_hex))
+    pub fn draw_mouse_target(&self, theme: &Theme, camera: &Camera2D) {
+        let pos = self.hex_layout.hex_to_world_pos(
+            self.hex_layout
+                .world_pos_to_hex(q2h(camera.screen_to_world(mouse_position().into()))),
+        );
+
+        draw_hexagon(
+            pos.x,
+            pos.y,
+            self.hex_size,
+            5.,
+            true,
+            theme.color(ThemeColor::Normal),
+            Color::default().with_alpha(0.),
+        );
     }
 
-    pub fn brush_node(&self) -> Node {
-        self.brush_node
+    pub fn draw_brush(&self, theme: &Theme, camera: &Camera2D) {
+        let pos = h2q(self.hex_layout.hex_to_world_pos(
+            self.hex_layout
+                .world_pos_to_hex(q2h(camera.screen_to_world(mouse_position().into()))),
+        ));
+
+        self.brush.draw(
+            pos,
+            self.hex_size,
+            theme.color(ThemeColor::Lighter).with_alpha(0.5),
+            theme.color(ThemeColor::Dark).with_alpha(0.5),
+        );
     }
+}
+
+pub fn h2q(v: hexx::Vec2) -> Vec2 {
+    vec2(v.x, v.y)
+}
+
+pub fn q2h(v: Vec2) -> hexx::Vec2 {
+    hexx::Vec2::new(v.x, v.y)
 }

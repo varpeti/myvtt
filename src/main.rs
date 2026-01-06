@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use crate::game::Game;
 
-#[macroquad::main("Hello-Macroquad")]
+#[macroquad::main("myvtt")]
 async fn main() -> Result<()> {
     let mut game = Game::default();
     game.load().await?;

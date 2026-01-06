@@ -14,7 +14,7 @@ impl Default for GameConfig {
 }
 
 impl GameConfig {
-    pub fn handle_events(&mut self) -> Result<()> {
+    pub fn handle_events(&mut self, _dt: f32) -> Result<()> {
         if is_key_pressed(KeyCode::F) {
             self.fullscreen = !self.fullscreen;
             set_fullscreen(self.fullscreen);

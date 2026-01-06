@@ -1,7 +1,7 @@
 use anyhow::Result;
 use macroquad::prelude::*;
 
-use crate::game::{camera::RPGCamera, map::Map, theme::Theme};
+use crate::game::{camera_controller::CameraController, theme::Theme};
 
 #[derive(Debug)]
 pub struct Hud {}
@@ -13,39 +13,30 @@ impl Default for Hud {
 }
 
 impl Hud {
-    pub fn handle_events(&mut self) -> Result<()> {
+    pub fn handle_events(&mut self, _dt: f32) -> Result<()> {
         Ok(())
     }
 
-    pub fn draw(&mut self, camera: &RPGCamera, map: &Map) -> Result<()> {
-        set_default_camera();
-
+    pub fn draw(&mut self, theme: &Theme, camera: &Camera2D, camera_controller: &CameraController) {
         let (mx, my) = mouse_position();
-        let (hhex, hnode) = map.hoovered_node();
-        let target = camera.get_target();
+        let camera_target_pos = camera.world_to_screen(camera_controller.to_target);
+
+        draw_circle(
+            camera_target_pos.x,
+            camera_target_pos.y,
+            3.,
+            theme.color(crate::game::theme::ThemeColor::Normal),
+        );
 
         draw_multiline_text(
-            &format!(
-                "mouse: {:+05} {:+05}\nhoovered: {:+05} {:+05} {:?}\nbrush: {:?}\ncamera: {:+5} {:+5} {} {:.3}",
-                mx,
-                my,
-                hhex.x,
-                hhex.y,
-                hnode,
-                map.brush_node(),
-                target.x as i32,
-                target.y as i32,
-                camera.get_zoom() as i32,
-                camera.get_rotation(),
-            ),
+            &format!("mouse: {:+05} {:+05}\n", mx, my,),
             12.,
             42.,
             32.,
             None,
-            Theme::LotusCyan.color(),
+            WHITE,
         );
 
         draw_fps();
-        Ok(())
     }
 }
