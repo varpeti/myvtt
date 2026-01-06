@@ -71,6 +71,8 @@ impl Tile {
                 draw_triangle(full[0], full[i], full[i + 1], full_color);
             }
         }
+
+        draw_circle(pos.x, pos.y, 2., full_color);
     }
 
     pub fn rotation(&mut self, delta: i8) {

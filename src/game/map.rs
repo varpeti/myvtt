@@ -56,7 +56,7 @@ impl Default for Map {
 }
 
 impl Map {
-    pub fn handle_events(&mut self, events: &mut Events, _dt: f32) -> Result<()> {
+    pub fn handle_events(&mut self, events: &mut Events, camera: &mut Camera2D) -> Result<()> {
         if events.pop(&Event::BrushPickEmpty) {
             self.brush.tile_type = TileType::Empty;
         }
@@ -76,6 +76,22 @@ impl Map {
             self.brush.rotation(-1);
         }
 
+        let hoovered_hex = self
+            .hex_layout
+            .world_pos_to_hex(q2h(camera.screen_to_world(mouse_position().into())));
+
+        if events.pop(&Event::BrushCloneTile)
+            && let Some(tile) = self.tiles.get(&hoovered_hex)
+        {
+            self.brush = *tile;
+        }
+        if events.pop(&Event::BrushDraw) {
+            self.tiles.insert(hoovered_hex, self.brush);
+        }
+        if events.pop(&Event::BrushRemove) {
+            self.tiles.remove(&hoovered_hex);
+        }
+
         Ok(())
     }
 
@@ -84,7 +100,7 @@ impl Map {
             let pos = h2q(self.hex_layout.hex_to_world_pos(*hex));
             tile.draw(
                 pos,
-                self.hex_size - 1.,
+                self.hex_size,
                 theme.color(ThemeColor::Lighter),
                 theme.color(ThemeColor::Dark),
             );

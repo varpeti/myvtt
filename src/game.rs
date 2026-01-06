@@ -27,7 +27,7 @@ pub struct Game {
 
 impl Game {
     pub async fn load(&mut self) -> Result<()> {
-        info!("{}", self.camera.zoom);
+        // TODO:
         Ok(())
     }
 
@@ -48,7 +48,7 @@ impl Game {
                 self.camera_controller.handle_events(&mut self.events, dt)?;
                 self.camera_controller.update(&mut self.camera, dt)?;
                 self.config.handle_events(dt)?; // TODO:
-                self.map.handle_events(&mut self.events, dt)?;
+                self.map.handle_events(&mut self.events, &mut self.camera)?;
                 self.hud.handle_events(dt)?;
             }
         }

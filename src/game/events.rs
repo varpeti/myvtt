@@ -21,6 +21,9 @@ pub enum Event {
     BrushPickFull,
     BrushRotateClockwise,
     BrushRotateAntiClockwise,
+    BrushCloneTile,
+    BrushDraw,
+    BrushRemove,
 }
 
 #[derive(Debug)]
@@ -135,6 +138,27 @@ impl Default for Events {
             (
                 Event::BrushRotateAntiClockwise,
                 vec![vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::E))]],
+            ),
+            (
+                Event::BrushCloneTile,
+                vec![vec![(
+                    EventS::JustPressed,
+                    EventT::Mouse(MouseButton2::MiddleClick),
+                )]],
+            ),
+            (
+                Event::BrushDraw,
+                vec![vec![(
+                    EventS::IsDown,
+                    EventT::Mouse(MouseButton2::LeftClick),
+                )]],
+            ),
+            (
+                Event::BrushRemove,
+                vec![vec![(
+                    EventS::IsDown,
+                    EventT::Mouse(MouseButton2::RightClick),
+                )]],
             ),
         ]);
 
