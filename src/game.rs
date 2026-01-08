@@ -6,8 +6,7 @@ pub mod map;
 pub mod theme;
 
 use crate::game::{
-    camera_controller::CameraController, events::Events, game_config::GameConfig, hud::Hud,
-    map::Map, theme::Theme,
+    camera_controller::CameraController, game_config::GameConfig, hud::Hud, map::Map, theme::Theme,
 };
 
 use anyhow::Result;
@@ -16,7 +15,6 @@ use macroquad::prelude::*;
 #[derive(Default)]
 pub struct Game {
     config: GameConfig,
-    events: Events,
     camera: Camera2D,
     camera_controller: CameraController,
     map: Map,
@@ -27,7 +25,7 @@ pub struct Game {
 
 impl Game {
     pub async fn load(&mut self) -> Result<()> {
-        // TODO:
+        self.map.load_map().await?;
         Ok(())
     }
 
@@ -44,11 +42,10 @@ impl Game {
     pub async fn handle_events(&mut self, dt: f32) -> Result<()> {
         match self.state {
             GameState::MapEditor => {
-                self.events.update();
-                self.camera_controller.handle_events(&mut self.events, dt)?;
+                self.camera_controller.handle_events(dt)?;
                 self.camera_controller.update(&mut self.camera, dt)?;
                 self.config.handle_events(dt)?; // TODO:
-                self.map.handle_events(&mut self.events, &mut self.camera)?;
+                self.map.handle_events(&mut self.camera).await?;
                 self.hud.handle_events(dt)?;
             }
         }

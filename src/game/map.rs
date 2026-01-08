@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+mod default;
+mod load;
 mod tiles;
 
 use std::collections::HashMap;
@@ -14,82 +16,74 @@ use crate::game::{
     theme::{Theme, ThemeColor},
 };
 
-#[derive(Debug)]
 pub struct Map {
     hex_layout: HexLayout,
     hex_size: f32,
     tiles: HashMap<Hex, Tile>,
     brush: Tile,
+    pub current_map_file: String,
+
+    brush_events: Events<BrushEvent>,
 }
 
-impl Default for Map {
-    fn default() -> Self {
-        let tiles = HashMap::from([
-            (Hex::new(0, 0), Tile::new(TileType::Empty, 0)),
-            (Hex::new(-1, 2), Tile::new(TileType::Small, 0)),
-            (Hex::new(0, 2), Tile::new(TileType::Small, 1)),
-            (Hex::new(1, 2), Tile::new(TileType::Small, 2)),
-            (Hex::new(2, 2), Tile::new(TileType::Small, 3)),
-            (Hex::new(3, 2), Tile::new(TileType::Small, 4)),
-            (Hex::new(4, 2), Tile::new(TileType::Small, 5)),
-            (Hex::new(-2, 4), Tile::new(TileType::Half, 0)),
-            (Hex::new(-1, 4), Tile::new(TileType::Half, 1)),
-            (Hex::new(0, 4), Tile::new(TileType::Half, 2)),
-            (Hex::new(1, 4), Tile::new(TileType::Half, 3)),
-            (Hex::new(2, 4), Tile::new(TileType::Half, 4)),
-            (Hex::new(3, 4), Tile::new(TileType::Half, 5)),
-            (Hex::new(-3, 6), Tile::new(TileType::Full, 0)),
-        ]);
-
-        let hex_size = 32.;
-        Self {
-            hex_layout: HexLayout {
-                orientation: hexx::HexOrientation::Pointy,
-                origin: hexx::Vec2::ZERO,
-                scale: hexx::Vec2::new(hex_size, hex_size),
-            },
-            hex_size,
-            tiles,
-            brush: Tile::new(TileType::Empty, 0),
-        }
-    }
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum BrushEvent {
+    PickEmpty,
+    PickSmall,
+    PickHalf,
+    PickLarge,
+    PickFull,
+    RotateClockwise,
+    RotateAntiClockwise,
+    CloneTile,
+    Draw,
+    Remove,
 }
+
+impl Event for BrushEvent {}
 
 impl Map {
-    pub fn handle_events(&mut self, events: &mut Events, camera: &mut Camera2D) -> Result<()> {
-        if events.pop(&Event::BrushPickEmpty) {
+    pub async fn handle_events(&mut self, camera: &mut Camera2D) -> Result<()> {
+        self.brush_events.update();
+
+        if self.brush_events.pop(&BrushEvent::PickEmpty) {
             self.brush.tile_type = TileType::Empty;
         }
-        if events.pop(&Event::BrushPickSmall) {
+        if self.brush_events.pop(&BrushEvent::PickSmall) {
             self.brush.tile_type = TileType::Small;
         }
-        if events.pop(&Event::BrushPickHalf) {
+        if self.brush_events.pop(&BrushEvent::PickHalf) {
             self.brush.tile_type = TileType::Half;
         }
-        if events.pop(&Event::BrushPickFull) {
+        if self.brush_events.pop(&BrushEvent::PickLarge) {
+            self.brush.tile_type = TileType::Large;
+        }
+        if self.brush_events.pop(&BrushEvent::PickFull) {
             self.brush.tile_type = TileType::Full;
         }
-        if events.pop(&Event::BrushRotateClockwise) {
-            self.brush.rotation(1);
+        if self.brush_events.pop(&BrushEvent::RotateClockwise) {
+            self.brush.rotate(1);
         }
-        if events.pop(&Event::BrushRotateAntiClockwise) {
-            self.brush.rotation(-1);
+        if self.brush_events.pop(&BrushEvent::RotateAntiClockwise) {
+            self.brush.rotate(-1);
         }
 
         let hoovered_hex = self
             .hex_layout
             .world_pos_to_hex(q2h(camera.screen_to_world(mouse_position().into())));
 
-        if events.pop(&Event::BrushCloneTile)
+        if self.brush_events.pop(&BrushEvent::CloneTile)
             && let Some(tile) = self.tiles.get(&hoovered_hex)
         {
             self.brush = *tile;
         }
-        if events.pop(&Event::BrushDraw) {
+        if self.brush_events.pop(&BrushEvent::Draw) {
             self.tiles.insert(hoovered_hex, self.brush);
+            self.save_map().await?;
         }
-        if events.pop(&Event::BrushRemove) {
+        if self.brush_events.pop(&BrushEvent::Remove) {
             self.tiles.remove(&hoovered_hex);
+            self.save_map().await?;
         }
 
         Ok(())

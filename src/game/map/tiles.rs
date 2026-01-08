@@ -1,6 +1,7 @@
 use std::f32::{self, consts::FRAC_PI_6};
 
 use macroquad::prelude::*;
+use strum_macros::{AsRefStr, EnumString};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Tile {
@@ -42,6 +43,14 @@ impl Tile {
                 split[(v + 2) % 6] = VertexType::Full;
                 split[(v + 3) % 6] = VertexType::Both;
             }
+            TileType::Large => {
+                let v = self.rotation as usize;
+                split[v % 6] = VertexType::Both;
+                for i in 1..=3 {
+                    split[(v + i) % 6] = VertexType::Full;
+                }
+                split[(v + 4) % 6] = VertexType::Both;
+            }
             TileType::Full => split = [VertexType::Full; 6],
         }
 
@@ -75,16 +84,21 @@ impl Tile {
         draw_circle(pos.x, pos.y, 2., full_color);
     }
 
-    pub fn rotation(&mut self, delta: i8) {
+    pub fn rotate(&mut self, delta: i8) {
         self.rotation = (self.rotation as i8 + delta).rem_euclid(6) as u8;
+    }
+
+    pub fn rotation(&self) -> u8 {
+        self.rotation
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsRefStr)]
 pub enum TileType {
     Empty,
     Small,
     Half,
+    Large,
     Full,
 }
 

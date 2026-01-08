@@ -1,175 +1,39 @@
 #![allow(dead_code)]
 
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hash,
+};
 
 use macroquad::prelude::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Event {
-    CameraUp,
-    CameraRight,
-    CameraDown,
-    CameraLeft,
-    CameraZoomIn,
-    CameraZoomOut,
-    CameraRotateClockwise,
-    CameraRotateAntiClockwise,
-
-    BrushPickEmpty,
-    BrushPickSmall,
-    BrushPickHalf,
-    BrushPickFull,
-    BrushRotateClockwise,
-    BrushRotateAntiClockwise,
-    BrushCloneTile,
-    BrushDraw,
-    BrushRemove,
-}
+pub trait Event: Hash + Eq + Clone {}
 
 #[derive(Debug)]
-pub struct Events {
-    pub input_map: HashMap<Event, Vec<Vec<(EventS, EventT)>>>,
-    events: HashSet<Event>,
+pub struct Events<E: Event> {
+    pub input_map: HashMap<E, Vec<Vec<(EventS, EventT)>>>,
+    events: HashSet<E>,
 }
 
-impl Default for Events {
+impl<E: Event> Default for Events<E> {
     fn default() -> Self {
-        let input_map = HashMap::from([
-            (
-                Event::CameraUp,
-                vec![
-                    vec![(EventS::IsDown, EventT::Keyboard(KeyCode::W))],
-                    vec![(EventS::IsDown, EventT::Keyboard(KeyCode::Up))],
-                ],
-            ),
-            (
-                Event::CameraRight,
-                vec![
-                    vec![(EventS::IsDown, EventT::Keyboard(KeyCode::D))],
-                    vec![(EventS::IsDown, EventT::Keyboard(KeyCode::Right))],
-                ],
-            ),
-            (
-                Event::CameraDown,
-                vec![
-                    vec![(EventS::IsDown, EventT::Keyboard(KeyCode::S))],
-                    vec![(EventS::IsDown, EventT::Keyboard(KeyCode::Down))],
-                ],
-            ),
-            (
-                Event::CameraLeft,
-                vec![
-                    vec![(EventS::IsDown, EventT::Keyboard(KeyCode::A))],
-                    vec![(EventS::IsDown, EventT::Keyboard(KeyCode::Left))],
-                ],
-            ),
-            (
-                Event::CameraZoomIn,
-                vec![
-                    vec![
-                        (EventS::IsDown, EventT::Keyboard(KeyCode::LeftControl)),
-                        (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelUp)),
-                    ],
-                    vec![
-                        (EventS::IsDown, EventT::Keyboard(KeyCode::RightControl)),
-                        (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelUp)),
-                    ],
-                ],
-            ),
-            (
-                Event::CameraZoomOut,
-                vec![
-                    vec![
-                        (EventS::IsDown, EventT::Keyboard(KeyCode::LeftControl)),
-                        (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelDown)),
-                    ],
-                    vec![
-                        (EventS::IsDown, EventT::Keyboard(KeyCode::RightControl)),
-                        (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelDown)),
-                    ],
-                ],
-            ),
-            (
-                Event::CameraRotateClockwise,
-                vec![
-                    vec![
-                        (EventS::IsDown, EventT::Keyboard(KeyCode::LeftShift)),
-                        (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelUp)),
-                    ],
-                    vec![
-                        (EventS::IsDown, EventT::Keyboard(KeyCode::RightShift)),
-                        (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelUp)),
-                    ],
-                ],
-            ),
-            (
-                Event::CameraRotateAntiClockwise,
-                vec![
-                    vec![
-                        (EventS::IsDown, EventT::Keyboard(KeyCode::LeftShift)),
-                        (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelDown)),
-                    ],
-                    vec![
-                        (EventS::IsDown, EventT::Keyboard(KeyCode::RightShift)),
-                        (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelDown)),
-                    ],
-                ],
-            ),
-            (
-                Event::BrushPickEmpty,
-                vec![vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::Key1))]],
-            ),
-            (
-                Event::BrushPickSmall,
-                vec![vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::Key2))]],
-            ),
-            (
-                Event::BrushPickHalf,
-                vec![vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::Key3))]],
-            ),
-            (
-                Event::BrushPickFull,
-                vec![vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::Key4))]],
-            ),
-            (
-                Event::BrushRotateClockwise,
-                vec![vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::Q))]],
-            ),
-            (
-                Event::BrushRotateAntiClockwise,
-                vec![vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::E))]],
-            ),
-            (
-                Event::BrushCloneTile,
-                vec![vec![(
-                    EventS::JustPressed,
-                    EventT::Mouse(MouseButton2::MiddleClick),
-                )]],
-            ),
-            (
-                Event::BrushDraw,
-                vec![vec![(
-                    EventS::IsDown,
-                    EventT::Mouse(MouseButton2::LeftClick),
-                )]],
-            ),
-            (
-                Event::BrushRemove,
-                vec![vec![(
-                    EventS::IsDown,
-                    EventT::Mouse(MouseButton2::RightClick),
-                )]],
-            ),
-        ]);
-
         Self {
-            input_map,
+            input_map: HashMap::new(),
             events: HashSet::new(),
         }
     }
 }
 
-impl Events {
+impl<E: Event, const N: usize> From<[(E, Vec<Vec<(EventS, EventT)>>); N]> for Events<E> {
+    fn from(input_map: [(E, Vec<Vec<(EventS, EventT)>>); N]) -> Self {
+        Self {
+            input_map: HashMap::from(input_map),
+            events: HashSet::default(),
+        }
+    }
+}
+
+impl<E: Event> Events<E> {
     pub fn update(&mut self) {
         self.events.clear();
         for (event, event_type_ors) in self.input_map.iter() {
@@ -196,18 +60,18 @@ impl Events {
                     }
                 });
                 if ok {
-                    self.events.insert(*event);
+                    self.events.insert(event.clone());
                     break;
                 }
             }
         }
     }
 
-    pub fn contains(&self, event: &Event) -> bool {
+    pub fn contains(&self, event: &E) -> bool {
         self.events.contains(event)
     }
 
-    pub fn pop(&mut self, event: &Event) -> bool {
+    pub fn pop(&mut self, event: &E) -> bool {
         self.events.remove(event)
     }
 }

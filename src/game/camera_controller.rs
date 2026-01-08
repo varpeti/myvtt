@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+mod default;
+
 use std::f32;
 
 use anyhow::Result;
@@ -23,60 +25,51 @@ pub struct CameraController {
     pub smoothing_factor: f32,
     pub min_zoom: f32,
     pub max_zoom: f32,
+
+    events: Events<CameraEvent>,
 }
 
-impl Default for CameraController {
-    fn default() -> Self {
-        let target = Vec2::ZERO;
-        let zoom = 1.;
-        let rotation = 0.;
-
-        Self {
-            target,
-            zoom,
-            rotation,
-
-            to_target: target,
-            to_zoom: zoom,
-            to_rotation: rotation,
-
-            movement_speed: 512.,
-            rotation_delta: f32::consts::FRAC_PI_6,
-            zoom_gamma: 1.1,
-
-            smoothing_factor: 5.,
-            min_zoom: 0.125,
-            max_zoom: 8.,
-        }
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CameraEvent {
+    Up,
+    Right,
+    Down,
+    Left,
+    ZoomIn,
+    ZoomOut,
+    RotateClockwise,
+    RotateAntiClockwise,
 }
+
+impl Event for CameraEvent {}
 
 impl CameraController {
-    pub fn handle_events(&mut self, events: &mut Events, dt: f32) -> Result<()> {
-        if events.pop(&Event::CameraUp) {
+    pub fn handle_events(&mut self, dt: f32) -> Result<()> {
+        self.events.update();
+        if self.events.pop(&CameraEvent::Up) {
             self.move_to_direction(Direction::Up, self.movement_speed, dt);
         }
-        if events.pop(&Event::CameraDown) {
+        if self.events.pop(&CameraEvent::Down) {
             self.move_to_direction(Direction::Down, self.movement_speed, dt);
         }
-        if events.pop(&Event::CameraRight) {
+        if self.events.pop(&CameraEvent::Right) {
             self.move_to_direction(Direction::Right, self.movement_speed, dt);
         }
-        if events.pop(&Event::CameraLeft) {
+        if self.events.pop(&CameraEvent::Left) {
             self.move_to_direction(Direction::Left, self.movement_speed, dt);
         }
 
-        if events.pop(&Event::CameraZoomIn) {
+        if self.events.pop(&CameraEvent::ZoomIn) {
             self.zoom(self.zoom_gamma);
         }
-        if events.pop(&Event::CameraZoomOut) {
+        if self.events.pop(&CameraEvent::ZoomOut) {
             self.zoom(1. / self.zoom_gamma);
         }
 
-        if events.pop(&Event::CameraRotateClockwise) {
+        if self.events.pop(&CameraEvent::RotateClockwise) {
             self.rotate(self.rotation_delta);
         }
-        if events.pop(&Event::CameraRotateAntiClockwise) {
+        if self.events.pop(&CameraEvent::RotateAntiClockwise) {
             self.rotate(-self.rotation_delta);
         }
 
