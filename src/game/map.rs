@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 mod default;
-mod load;
+mod load_save;
 mod tiles;
 
 use std::collections::HashMap;

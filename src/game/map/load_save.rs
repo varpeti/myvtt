@@ -39,7 +39,7 @@ impl Map {
         for (hex, tile) in self.tiles.iter() {
             writeln!(
                 file,
-                "{} {} {} {}",
+                "{:+03} {:+03} {} {}",
                 hex.x,
                 hex.y,
                 tile.tile_type.as_ref(),
