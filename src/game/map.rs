@@ -4,7 +4,7 @@ mod default;
 mod load_save;
 mod tiles;
 
-use std::collections::HashMap;
+use std::{cmp::Ordering, collections::HashMap};
 
 use anyhow::Result;
 use hexx::{Hex, HexLayout};

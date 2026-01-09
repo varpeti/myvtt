@@ -22,7 +22,7 @@ impl Tile {
     pub fn new(tile_type: TileType, rotation: u8) -> Self {
         Self {
             tile_type,
-            rotation,
+            rotation: rotation % 6,
         }
     }
 
