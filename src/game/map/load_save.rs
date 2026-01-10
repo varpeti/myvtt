@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     fs,
     io::{BufWriter, Write},
 };
@@ -36,7 +37,13 @@ impl Map {
                 .write(true)
                 .open(&self.current_map_file)?,
         );
-        for (hex, tile) in self.tiles.iter() {
+        let mut tiles = Vec::from_iter(self.tiles.iter());
+        tiles.sort_by(|a, b| match a.0.x.cmp(&b.0.x) {
+            Ordering::Equal => a.0.y.cmp(&b.0.y),
+            o => o,
+        });
+
+        for (hex, tile) in tiles {
             writeln!(
                 file,
                 "{:+03} {:+03} {} {}",

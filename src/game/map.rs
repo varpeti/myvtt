@@ -114,6 +114,7 @@ impl Map {
 
         if self.brush_events.pop(&BrushEvent::InsertWalls) {
             self.insert_walls();
+            self.save_map().await?;
         }
 
         Ok(())
