@@ -91,6 +91,10 @@ impl Tile {
     pub fn rotation(&self) -> u8 {
         self.rotation
     }
+
+    pub fn is_empty_or_full(&self) -> bool {
+        self.tile_type == TileType::Empty || self.tile_type == TileType::Full
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString, AsRefStr)]
