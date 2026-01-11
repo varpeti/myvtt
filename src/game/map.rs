@@ -5,7 +5,6 @@ pub mod tiles;
 
 use std::collections::HashMap;
 
-use anyhow::Result;
 use hexx::{Hex, HexLayout};
 use macroquad::prelude::*;
 
@@ -44,7 +43,7 @@ impl Default for Map {
 }
 
 impl Map {
-    pub fn draw_map(&mut self, theme: &Theme) {
+    pub fn draw(&mut self, theme: &Theme) {
         for (hex, tile) in self.tiles.iter() {
             let pos = h2q(self.hex_layout.hex_to_world_pos(*hex));
             tile.draw(
@@ -56,41 +55,43 @@ impl Map {
         }
     }
 
-    pub fn update(&mut self, camera: &Camera2D, dt: f32) -> Result<()> {
-        let mouse_pos = h2q(self.hex_layout.hex_to_world_pos(
-            self.hex_layout
-                .world_pos_to_hex(q2h(camera.screen_to_world(mouse_position().into()))),
-        ));
-
-        let d = mouse_pos - self.mouse_target;
-        if d.length() > 0.01 {
-            self.mouse_target += d * self.smoothing_factor * dt;
-        }
-
-        Ok(())
-    }
-
-    pub fn draw_mouse_target(&self, theme: &Theme) {
-        let hoovered_hex = self.hex_layout.world_pos_to_hex(q2h(self.mouse_target));
-        let offset = q2h(self.mouse_target) - self.hex_layout.hex_to_world_pos(hoovered_hex);
-
-        let pos = self.hex_layout.hex_to_world_pos(hoovered_hex) + offset;
-        draw_hexagon(
-            pos.x,
-            pos.y,
-            self.hex_size,
-            5.,
-            true,
-            theme.color(ThemeColor::Normal),
-            Color::default().with_alpha(0.),
-        );
-    }
+    // pub fn update(&mut self, camera: &Camera2D, dt: f32) -> Result<()> {
+    //     let mouse_pos = h2q(self.hex_layout.hex_to_world_pos(
+    //         self.hex_layout
+    //             .world_pos_to_hex(q2h(camera.screen_to_world(mouse_position().into()))),
+    //     ));
+    //
+    //     let d = mouse_pos - self.mouse_target;
+    //     if d.length() > 0.01 {
+    //         self.mouse_target += d * self.smoothing_factor * dt;
+    //     }
+    //
+    //     Ok(())
+    // }
+    //
+    // pub fn draw_mouse_target(&self, theme: &Theme) {
+    //     let hoovered_hex = self.hex_layout.world_pos_to_hex(q2h(self.mouse_target));
+    //     let offset = q2h(self.mouse_target) - self.hex_layout.hex_to_world_pos(hoovered_hex);
+    //
+    //     let pos = self.hex_layout.hex_to_world_pos(hoovered_hex) + offset;
+    //     draw_hexagon(
+    //         pos.x,
+    //         pos.y,
+    //         self.hex_size,
+    //         5.,
+    //         true,
+    //         theme.color(ThemeColor::Normal),
+    //         Color::default().with_alpha(0.),
+    //     );
+    // }
 }
 
+#[inline]
 pub fn h2q(v: hexx::Vec2) -> Vec2 {
     vec2(v.x, v.y)
 }
 
+#[inline]
 pub fn q2h(v: Vec2) -> hexx::Vec2 {
     hexx::Vec2::new(v.x, v.y)
 }

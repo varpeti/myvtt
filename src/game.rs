@@ -1,5 +1,6 @@
 pub mod brush;
 pub mod camera_controller;
+pub mod entities;
 pub mod events;
 pub mod game_state;
 pub mod hud;
@@ -9,6 +10,7 @@ pub mod theme;
 use crate::game::{
     brush::Brush,
     camera_controller::CameraController,
+    entities::Entities,
     game_state::{GameState, Mode},
     hud::Hud,
     map::Map,
@@ -23,6 +25,7 @@ pub struct Game {
     brush: Brush,
     camera: Camera2D,
     camera_controller: CameraController,
+    entities: Entities,
     hud: Hud,
     map: Map,
     state: GameState,
@@ -32,6 +35,8 @@ pub struct Game {
 impl Game {
     pub async fn load(&mut self) -> Result<()> {
         self.map.load_map().await?;
+        self.entities.load_images().await?;
+        self.entities.load_entities().await?;
         Ok(())
     }
 
@@ -58,13 +63,13 @@ impl Game {
             Mode::Normal => {
                 self.camera_controller.handle_events(dt)?;
                 self.camera_controller.update(&mut self.camera, dt)?;
-                self.map.update(&self.camera, dt)?;
                 self.hud.handle_events(dt)?;
+                self.entities
+                    .handle_events(&self.map.hex_layout, &self.camera, dt)?;
             }
             Mode::MapEditor => {
                 self.camera_controller.handle_events(dt)?;
                 self.camera_controller.update(&mut self.camera, dt)?;
-                self.map.update(&self.camera, dt)?;
                 self.brush
                     .handle_events(&mut self.map, &self.camera)
                     .await?;
@@ -80,17 +85,16 @@ impl Game {
         match self.state.mode {
             Mode::Normal => {
                 set_camera(&self.camera);
-                self.map.draw_map(&self.theme);
-                self.map.draw_mouse_target(&self.theme);
+                self.map.draw(&self.theme);
+                self.entities.draw(&self.map.hex_layout, &self.theme);
                 set_default_camera();
                 self.hud
                     .draw(&self.theme, &self.camera, &self.camera_controller);
             }
             Mode::MapEditor => {
                 set_camera(&self.camera);
-                self.map.draw_map(&self.theme);
+                self.map.draw(&self.theme);
                 self.brush.draw(&self.map, &self.theme);
-                self.map.draw_mouse_target(&self.theme);
                 set_default_camera();
                 self.hud
                     .draw(&self.theme, &self.camera, &self.camera_controller);

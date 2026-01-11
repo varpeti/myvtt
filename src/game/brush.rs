@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
+use hexx::Hex;
 use macroquad::prelude::*;
 
 use crate::game::{
@@ -30,20 +33,22 @@ pub enum BrushEvent {
 impl Event for BrushEvent {}
 
 pub struct Brush {
-    brush_pos: Vec2,
-    smoothing_factor: f32,
+    to_fade: HashMap<Hex, f32>,
+    fade_factor: f32,
     brush: Tile,
     brush_size: u32,
+    brush_max_size: u32,
     brush_events: Events<BrushEvent>,
 }
 
 impl Default for Brush {
     fn default() -> Self {
         Self {
-            brush_pos: Vec2::new(screen_width() / 2., screen_height() / 2.),
-            smoothing_factor: 28.,
+            to_fade: HashMap::new(),
+            fade_factor: 5.,
             brush: Tile::new(TileType::Empty, 0),
             brush_size: 0,
+            brush_max_size: 16,
             brush_events: Events::from([
                 (
                     BrushEvent::PickEmpty,
@@ -149,7 +154,11 @@ impl Brush {
             self.brush.rotate(-1);
         }
         if self.brush_events.pop(&BrushEvent::SizeUp) {
-            self.brush_size = self.brush_size.saturating_add(1);
+            if self.brush_size == self.brush_max_size {
+                self.brush_size = self.brush_max_size;
+            } else {
+                self.brush_size += 1;
+            }
         }
         if self.brush_events.pop(&BrushEvent::SizeDown) {
             self.brush_size = self.brush_size.saturating_sub(1);
@@ -195,40 +204,34 @@ impl Brush {
     }
 
     pub fn update(&mut self, map: &Map, camera: &Camera2D, dt: f32) -> Result<()> {
-        let mouse_pos = h2q(map.hex_layout.hex_to_world_pos(
-            map.hex_layout
-                .world_pos_to_hex(q2h(camera.screen_to_world(mouse_position().into()))),
-        ));
+        self.to_fade.retain(|_, alpha| {
+            *alpha -= self.fade_factor * dt;
+            *alpha > 0.
+        });
 
-        let d = mouse_pos - self.brush_pos;
-        if d.length() > 0.01 {
-            self.brush_pos += d * self.smoothing_factor * dt;
+        let hoovered_hex = map
+            .hex_layout
+            .world_pos_to_hex(q2h(camera.screen_to_world(mouse_position().into())));
+
+        if self.brush.is_empty_or_full() {
+            for hex in hoovered_hex.range(self.brush_size) {
+                self.to_fade.insert(hex, 1.);
+            }
+        } else {
+            self.to_fade.insert(hoovered_hex, 1.);
         }
 
         Ok(())
     }
 
     pub fn draw(&self, map: &Map, theme: &Theme) {
-        let hoovered_hex = map.hex_layout.world_pos_to_hex(q2h(self.brush_pos));
-        let offset = q2h(self.brush_pos) - map.hex_layout.hex_to_world_pos(hoovered_hex);
-
-        if self.brush.is_empty_or_full() {
-            for hex in hoovered_hex.range(self.brush_size) {
-                let pos = h2q(map.hex_layout.hex_to_world_pos(hex) + offset);
-                self.brush.draw(
-                    pos,
-                    map.hex_size,
-                    theme.color(ThemeColor::Light).with_alpha(0.5),
-                    theme.color(ThemeColor::Normal).with_alpha(0.5),
-                );
-            }
-        } else {
-            let pos = h2q(map.hex_layout.hex_to_world_pos(hoovered_hex));
+        for (&hex, alpha) in self.to_fade.iter() {
+            let pos = h2q(map.hex_layout.hex_to_world_pos(hex));
             self.brush.draw(
                 pos,
                 map.hex_size,
-                theme.color(ThemeColor::Light).with_alpha(0.5),
-                theme.color(ThemeColor::Normal).with_alpha(0.5),
+                theme.color(ThemeColor::Light).with_alpha(0.5 * alpha),
+                theme.color(ThemeColor::Normal).with_alpha(0.5 * alpha),
             );
         }
     }

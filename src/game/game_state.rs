@@ -35,14 +35,17 @@ impl Default for GameState {
             game_events: Events::from([
                 (
                     GameEvent::ToggleFullScreen,
-                    vec![vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::F))]],
+                    vec![
+                        vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::F))],
+                        vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::F11))],
+                    ],
                 ),
                 (
                     GameEvent::SwitchTo(Mode::Normal),
-                    vec![vec![(
-                        EventS::JustPressed,
-                        EventT::Keyboard(KeyCode::Escape),
-                    )]],
+                    vec![
+                        vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::Escape))],
+                        vec![(EventS::JustPressed, EventT::Keyboard(KeyCode::Tab))],
+                    ],
                 ),
                 (
                     GameEvent::SwitchTo(Mode::MapEditor),
@@ -69,6 +72,7 @@ impl GameState {
         if self.game_events.pop(&GameEvent::SwitchTo(Mode::MapEditor)) {
             self.mode = Mode::MapEditor;
         }
+
         Ok(())
     }
 }
