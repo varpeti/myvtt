@@ -38,7 +38,7 @@ impl Default for Map {
             current_map_file: "assets/map/001".to_string(),
 
             mouse_target: Vec2::new(screen_width() / 2., screen_height() / 2.),
-            smoothing_factor: 16.,
+            smoothing_factor: 28.,
         }
     }
 }

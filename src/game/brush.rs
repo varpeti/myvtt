@@ -41,7 +41,7 @@ impl Default for Brush {
     fn default() -> Self {
         Self {
             brush_pos: Vec2::new(screen_width() / 2., screen_height() / 2.),
-            smoothing_factor: 16.,
+            smoothing_factor: 28.,
             brush: Tile::new(TileType::Empty, 0),
             brush_size: 0,
             brush_events: Events::from([
@@ -176,7 +176,6 @@ impl Brush {
             } else {
                 map.tiles.insert(hoovered_hex, self.brush);
             }
-            map.save_map().await?;
         }
         if self.brush_events.pop(&BrushEvent::Remove) {
             if self.brush.is_empty_or_full() {
@@ -186,12 +185,10 @@ impl Brush {
             } else {
                 map.tiles.remove(&hoovered_hex);
             }
-            map.save_map().await?;
         }
 
         if self.brush_events.pop(&BrushEvent::InsertWalls) {
             self.insert_walls(map);
-            map.save_map().await?;
         }
 
         Ok(())
