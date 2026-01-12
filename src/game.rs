@@ -35,7 +35,7 @@ pub struct Game {
 impl Game {
     pub async fn load(&mut self) -> Result<()> {
         self.map.load_map().await?;
-        self.entities.load_images().await?;
+        self.entities.load_textures().await?;
         self.entities.load_entities().await?;
         Ok(())
     }
@@ -86,7 +86,8 @@ impl Game {
             Mode::Normal => {
                 set_camera(&self.camera);
                 self.map.draw(&self.theme);
-                self.entities.draw(&self.map.hex_layout, &self.theme);
+                self.entities
+                    .draw(&self.theme, &self.map.hex_layout, &self.camera);
                 set_default_camera();
                 self.hud
                     .draw(&self.theme, &self.camera, &self.camera_controller);
@@ -95,6 +96,8 @@ impl Game {
                 set_camera(&self.camera);
                 self.map.draw(&self.theme);
                 self.brush.draw(&self.map, &self.theme);
+                self.entities
+                    .draw(&self.theme, &self.map.hex_layout, &self.camera);
                 set_default_camera();
                 self.hud
                     .draw(&self.theme, &self.camera, &self.camera_controller);

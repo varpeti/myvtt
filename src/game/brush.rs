@@ -108,14 +108,14 @@ impl Default for Brush {
                 (
                     BrushEvent::Insert,
                     vec![vec![(
-                        EventS::IsDown,
+                        EventS::IsPressed,
                         EventT::Mouse(MouseButton2::LeftClick),
                     )]],
                 ),
                 (
                     BrushEvent::Remove,
                     vec![vec![(
-                        EventS::IsDown,
+                        EventS::IsPressed,
                         EventT::Mouse(MouseButton2::RightClick),
                     )]],
                 ),

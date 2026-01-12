@@ -41,7 +41,7 @@ impl<E: Event> Events<E> {
                 let ok = event_type_ands.iter().all(|(es, et)| match et {
                     EventT::Keyboard(key_code) => match es {
                         EventS::JustPressed => is_key_pressed(*key_code),
-                        EventS::IsDown => is_key_down(*key_code),
+                        EventS::IsPressed => is_key_down(*key_code),
                         EventS::JustReleased => is_key_released(*key_code),
                     },
                     EventT::Mouse(mouse_button) => {
@@ -54,8 +54,8 @@ impl<E: Event> Events<E> {
                         };
                         match es {
                             EventS::JustPressed => is_mouse_button_pressed(button),
-                            EventS::IsDown => is_mouse_button_down(button),
-                            EventS::JustReleased => is_mouse_button_down(button),
+                            EventS::IsPressed => is_mouse_button_down(button),
+                            EventS::JustReleased => is_mouse_button_released(button),
                         }
                     }
                 });
@@ -79,7 +79,7 @@ impl<E: Event> Events<E> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventS {
     JustPressed,
-    IsDown,
+    IsPressed,
     JustReleased,
 }
 

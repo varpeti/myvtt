@@ -33,40 +33,40 @@ impl Default for CameraController {
                 (
                     CameraEvent::Up,
                     vec![
-                        vec![(EventS::IsDown, EventT::Keyboard(KeyCode::W))],
-                        vec![(EventS::IsDown, EventT::Keyboard(KeyCode::Up))],
+                        vec![(EventS::IsPressed, EventT::Keyboard(KeyCode::W))],
+                        vec![(EventS::IsPressed, EventT::Keyboard(KeyCode::Up))],
                     ],
                 ),
                 (
                     CameraEvent::Right,
                     vec![
-                        vec![(EventS::IsDown, EventT::Keyboard(KeyCode::D))],
-                        vec![(EventS::IsDown, EventT::Keyboard(KeyCode::Right))],
+                        vec![(EventS::IsPressed, EventT::Keyboard(KeyCode::D))],
+                        vec![(EventS::IsPressed, EventT::Keyboard(KeyCode::Right))],
                     ],
                 ),
                 (
                     CameraEvent::Down,
                     vec![
-                        vec![(EventS::IsDown, EventT::Keyboard(KeyCode::S))],
-                        vec![(EventS::IsDown, EventT::Keyboard(KeyCode::Down))],
+                        vec![(EventS::IsPressed, EventT::Keyboard(KeyCode::S))],
+                        vec![(EventS::IsPressed, EventT::Keyboard(KeyCode::Down))],
                     ],
                 ),
                 (
                     CameraEvent::Left,
                     vec![
-                        vec![(EventS::IsDown, EventT::Keyboard(KeyCode::A))],
-                        vec![(EventS::IsDown, EventT::Keyboard(KeyCode::Left))],
+                        vec![(EventS::IsPressed, EventT::Keyboard(KeyCode::A))],
+                        vec![(EventS::IsPressed, EventT::Keyboard(KeyCode::Left))],
                     ],
                 ),
                 (
                     CameraEvent::ZoomIn,
                     vec![
                         vec![
-                            (EventS::IsDown, EventT::Keyboard(KeyCode::LeftControl)),
+                            (EventS::IsPressed, EventT::Keyboard(KeyCode::LeftControl)),
                             (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelUp)),
                         ],
                         vec![
-                            (EventS::IsDown, EventT::Keyboard(KeyCode::RightControl)),
+                            (EventS::IsPressed, EventT::Keyboard(KeyCode::RightControl)),
                             (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelUp)),
                         ],
                     ],
@@ -75,11 +75,11 @@ impl Default for CameraController {
                     CameraEvent::ZoomOut,
                     vec![
                         vec![
-                            (EventS::IsDown, EventT::Keyboard(KeyCode::LeftControl)),
+                            (EventS::IsPressed, EventT::Keyboard(KeyCode::LeftControl)),
                             (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelDown)),
                         ],
                         vec![
-                            (EventS::IsDown, EventT::Keyboard(KeyCode::RightControl)),
+                            (EventS::IsPressed, EventT::Keyboard(KeyCode::RightControl)),
                             (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelDown)),
                         ],
                     ],
@@ -88,11 +88,11 @@ impl Default for CameraController {
                     CameraEvent::RotateClockwise,
                     vec![
                         vec![
-                            (EventS::IsDown, EventT::Keyboard(KeyCode::LeftShift)),
+                            (EventS::IsPressed, EventT::Keyboard(KeyCode::LeftShift)),
                             (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelUp)),
                         ],
                         vec![
-                            (EventS::IsDown, EventT::Keyboard(KeyCode::RightShift)),
+                            (EventS::IsPressed, EventT::Keyboard(KeyCode::RightShift)),
                             (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelUp)),
                         ],
                     ],
@@ -101,11 +101,11 @@ impl Default for CameraController {
                     CameraEvent::RotateAntiClockwise,
                     vec![
                         vec![
-                            (EventS::IsDown, EventT::Keyboard(KeyCode::LeftShift)),
+                            (EventS::IsPressed, EventT::Keyboard(KeyCode::LeftShift)),
                             (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelDown)),
                         ],
                         vec![
-                            (EventS::IsDown, EventT::Keyboard(KeyCode::RightShift)),
+                            (EventS::IsPressed, EventT::Keyboard(KeyCode::RightShift)),
                             (EventS::JustPressed, EventT::Mouse(MouseButton2::WheelDown)),
                         ],
                     ],
