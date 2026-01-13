@@ -2,23 +2,13 @@ use std::collections::HashMap;
 
 use macroquad::prelude::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Entity {
     pub image: String,
     pub alpha: f32,
     pub rotation: f32,
+    pub size: f32,
     pub data: Option<EntityData>,
-}
-
-impl Default for Entity {
-    fn default() -> Self {
-        Self {
-            image: String::new(),
-            alpha: 1.,
-            rotation: 0.,
-            data: None,
-        }
-    }
 }
 
 impl Entity {
@@ -27,11 +17,23 @@ impl Entity {
             image,
             alpha: 1.,
             rotation: 0.,
+            size: 1.,
             data: None,
         }
     }
 
-    pub fn draw(&self, pos: Vec2, size: Vec2, textures: &HashMap<String, Texture2D>) {
+    pub fn new_with_size(image: String, size: f32) -> Self {
+        Self {
+            image,
+            alpha: 1.,
+            rotation: 0.,
+            size,
+            data: None,
+        }
+    }
+
+    pub fn draw(&self, pos: Vec2, hex_inradius_size: Vec2, textures: &HashMap<String, Texture2D>) {
+        let size = self.size * hex_inradius_size;
         if let Some(texture) = textures.get(&self.image) {
             draw_texture_ex(
                 texture,

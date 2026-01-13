@@ -1,3 +1,4 @@
+pub mod default;
 pub mod entity;
 
 use std::{
@@ -10,8 +11,8 @@ use hexx::{Hex, HexLayout};
 use macroquad::prelude::*;
 
 use crate::game::{
-    entities::entity::Entity,
-    events::{Event, EventS, EventT, Events, MouseButton2},
+    entities::{default::EntityEvent, entity::Entity},
+    events::Events,
     map::{h2q, q2h},
     theme::{Theme, ThemeColor},
 };
@@ -22,71 +23,21 @@ pub struct Entities {
     grabbed_entities: HashSet<Hex>,
     textures: HashMap<String, Texture2D>,
     entity_events: Events<EntityEvent>,
-}
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub enum EntityEvent {
-    Select,
-    Drag,
-    Drop,
-}
+    entity_esp: bool,
 
-impl Event for EntityEvent {}
-
-impl Default for Entities {
-    fn default() -> Self {
-        // TODO: Remove
-        let todo_remove = HashMap::from([
-            (
-                Hex::new(0, 0),
-                vec![Entity::new("FullTransparentGreen".to_string())],
-            ),
-            (
-                Hex::new(0, 1),
-                vec![Entity::new("Token_Template.png".to_string())],
-            ),
-            (
-                Hex::new(0, 2),
-                vec![Entity::new("dragon, amethyst.png".to_string())],
-            ),
-        ]);
-        Self {
-            entities: todo_remove, //HashMap::new(),
-            selected_entities: HashSet::new(),
-            grabbed_entities: HashSet::new(),
-            textures: HashMap::from([(
-                "FullTransparentGreen".to_string(),
-                Texture2D::from_image(&Image::gen_image_color(8, 8, GREEN.with_alpha(0.75))),
-            )]),
-            entity_events: Events::from([
-                (
-                    EntityEvent::Select,
-                    vec![vec![(
-                        EventS::JustPressed,
-                        EventT::Mouse(MouseButton2::LeftClick),
-                    )]],
-                ),
-                (
-                    EntityEvent::Drag,
-                    vec![vec![(
-                        EventS::JustPressed,
-                        EventT::Mouse(MouseButton2::LeftClick),
-                    )]],
-                ),
-                (
-                    EntityEvent::Drop,
-                    vec![vec![(
-                        EventS::JustReleased,
-                        EventT::Mouse(MouseButton2::LeftClick),
-                    )]],
-                ),
-            ]),
-        }
-    }
+    rotation_delta: f32,
+    size_gamma: f32,
 }
 
 impl Entities {
     pub async fn load_textures(&mut self) -> Result<()> {
+        // TODO: load all files
+        self.load_texture("Token_Template.png").await?;
+        self.load_texture("dragon, amethyst.png").await?;
+        self.load_texture("bandit001.png").await?;
+        self.load_texture("bandit002.png").await?;
+        self.load_texture("red_dragon.png").await?;
         Ok(())
     }
 
@@ -111,17 +62,14 @@ impl Entities {
     ) -> Result<()> {
         self.entity_events.update();
 
-        let select = self.entity_events.pop(&EntityEvent::Select);
         let drag = self.entity_events.pop(&EntityEvent::Drag);
         let drop = self.entity_events.pop(&EntityEvent::Drop);
+        let duplicate_drag = self.entity_events.pop(&EntityEvent::DuplicateDrag);
+        let remove = self.entity_events.pop(&EntityEvent::Remove);
 
-        if select || drag || drop {
+        if drag || drop || duplicate_drag || remove {
             let hex =
                 hex_layout.world_pos_to_hex(q2h(camera.screen_to_world(mouse_position().into())));
-
-            // if select && self.entities.contains_key(&hex) && !self.selected_entities.remove(&hex) {
-            //     self.selected_entities.insert(hex);
-            // }
 
             if drag
                 && let Some(entities) = self.entities.get_mut(&hex)
@@ -151,17 +99,84 @@ impl Entities {
                 }
                 self.grabbed_entities.clear();
             }
+
+            if duplicate_drag
+                && let Some(entities) = self.entities.get_mut(&hex)
+                && let Some(entity) = entities.last()
+            {
+                let mut entity = entity.clone();
+                entity.alpha = 0.5;
+                self.grabbed_entities.insert(hex);
+                entities.push(entity);
+            }
+
+            if remove && let Some(mut entities) = self.entities.remove(&hex) {
+                entities.pop();
+                if !entities.is_empty() {
+                    self.entities.insert(hex, entities);
+                }
+            }
+        }
+
+        // TODO: Smooth
+        let size_up = self.entity_events.pop(&EntityEvent::SizeUp);
+        let size_down = self.entity_events.pop(&EntityEvent::SizeDown);
+        let rotate_clockwise = self.entity_events.pop(&EntityEvent::RotateClockwise);
+        let rotate_anticlockwise = self.entity_events.pop(&EntityEvent::RotateAntiClockwise);
+
+        if size_up || size_down || rotate_clockwise || rotate_anticlockwise {
+            for hex in self.grabbed_entities.iter() {
+                if let Some(entities) = self.entities.get_mut(hex)
+                    && let Some(entity) = entities.last_mut()
+                {
+                    if size_up {
+                        entity.size *= self.size_gamma;
+                    }
+                    if size_down {
+                        entity.size *= 1. / self.size_gamma;
+                    }
+                    if rotate_clockwise {
+                        entity.rotation += self.rotation_delta;
+                    }
+                    if rotate_anticlockwise {
+                        entity.rotation -= self.rotation_delta;
+                    }
+                }
+            }
+        }
+
+        if self.entity_events.pop(&EntityEvent::ToggleEntityEsp) {
+            self.entity_esp = !self.entity_esp;
+        }
+
+        // Only works in WASM32...
+        for file in get_dropped_files() {
+            info!("{:?}", file.path);
+        }
+
+        // Only works in WASM32...
+        for file_id in 0..miniquad::window::dropped_file_count() {
+            info!("minquad {:?}", miniquad::window::dropped_file_path(file_id));
         }
 
         Ok(())
     }
 
     pub fn draw(&self, theme: &Theme, hex_layout: &HexLayout, camera: &Camera2D) {
-        let size = h2q(hex_layout.scale) * Self::INRADIUS_2;
+        let hex_inradius_size = h2q(hex_layout.scale) * Self::INRADIUS_2;
         for (&hex, entities) in self.entities.iter() {
+            let pos = h2q(hex_layout.hex_to_world_pos(hex));
             for entity in entities.iter() {
-                let pos = h2q(hex_layout.hex_to_world_pos(hex));
-                entity.draw(pos, size, &self.textures);
+                entity.draw(pos, hex_inradius_size, &self.textures);
+            }
+            if self.entity_esp {
+                draw_circle_lines(
+                    pos.x,
+                    pos.y,
+                    hex_layout.scale.x,
+                    entities.len() as f32,
+                    theme.color(ThemeColor::Normal),
+                );
             }
         }
 
@@ -181,10 +196,11 @@ impl Entities {
                 && let Some(entity) = entities.last()
             {
                 let pos = camera.screen_to_world(mouse_position().into());
-                entity.draw(pos, size, &self.textures);
+                entity.draw(pos, hex_inradius_size, &self.textures);
             }
         }
     }
 
-    pub const INRADIUS_2: f32 = 1.732_050_8; // (inradius = sqrt(3)/2) * 2
+    pub const INRADIUS: f32 = 0.866_025_4; // sqrt(3)/2
+    pub const INRADIUS_2: f32 = 1.732_050_8; // sqrt(3)/2 * 2
 }

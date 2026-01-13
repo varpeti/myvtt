@@ -28,30 +28,33 @@ impl Map {
 
     pub async fn save_map(&self) -> Result<()> {
         #[cfg(target_arch = "wasm32")]
-        return Ok(());
+        {}
 
-        let mut file = BufWriter::new(
-            fs::OpenOptions::new()
-                .create(true)
-                .truncate(true)
-                .write(true)
-                .open(&self.current_map_file)?,
-        );
-        let mut tiles = Vec::from_iter(self.tiles.iter());
-        tiles.sort_by(|a, b| match a.0.x.cmp(&b.0.x) {
-            Ordering::Equal => a.0.y.cmp(&b.0.y),
-            o => o,
-        });
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let mut file = BufWriter::new(
+                fs::OpenOptions::new()
+                    .create(true)
+                    .truncate(true)
+                    .write(true)
+                    .open(&self.current_map_file)?,
+            );
+            let mut tiles = Vec::from_iter(self.tiles.iter());
+            tiles.sort_by(|a, b| match a.0.x.cmp(&b.0.x) {
+                Ordering::Equal => a.0.y.cmp(&b.0.y),
+                o => o,
+            });
 
-        for (hex, tile) in tiles {
-            writeln!(
-                file,
-                "{:+03} {:+03} {} {}",
-                hex.x,
-                hex.y,
-                tile.tile_type.as_ref(),
-                tile.rotation()
-            )?;
+            for (hex, tile) in tiles {
+                writeln!(
+                    file,
+                    "{:+03} {:+03} {} {}",
+                    hex.x,
+                    hex.y,
+                    tile.tile_type.as_ref(),
+                    tile.rotation()
+                )?;
+            }
         }
 
         Ok(())
