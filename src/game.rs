@@ -64,6 +64,7 @@ impl Game {
                 self.camera_controller.handle_events(dt)?;
                 self.camera_controller.update(&mut self.camera, dt)?;
                 self.hud.handle_events(dt)?;
+                self.entities.update(dt)?;
                 self.entities
                     .handle_events(&self.map.hex_layout, &self.camera, dt)?;
             }

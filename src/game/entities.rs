@@ -50,6 +50,13 @@ impl Entities {
         Ok(())
     }
 
+    pub fn update(&mut self, dt: f32) -> Result<()> {
+        for entity in self.entities.iter_mut() {
+            entity.update(dt);
+        }
+        Ok(())
+    }
+
     pub fn handle_events(
         &mut self,
         hex_layout: &HexLayout,
@@ -68,13 +75,13 @@ impl Entities {
                 hex_layout.world_pos_to_hex(q2h(camera.screen_to_world(mouse_position().into())));
 
             if drag && let Some((eid, entity)) = self.get_mut_entity_by_hex(hex) {
-                entity.alpha = 0.5;
+                entity.to_alpha = 0.5;
                 self.grabbed_entity = Some(eid);
             }
 
             if drop && let Some(eid) = self.grabbed_entity {
                 let mut entity = self.entities.remove(eid);
-                entity.alpha = 1.0;
+                entity.to_alpha = 1.0;
                 entity.hex = hex;
                 self.entities.push(entity);
                 self.grabbed_entity = None;
@@ -82,7 +89,7 @@ impl Entities {
 
             if duplicate_drag && let Some((_eid, entity)) = self.get_entity_by_hex(hex) {
                 let mut entity = entity.clone();
-                entity.alpha = 0.5;
+                entity.to_alpha = 0.5;
                 self.entities.push(entity);
                 self.grabbed_entity = Some(self.entities.len() - 1);
             }
@@ -103,16 +110,16 @@ impl Entities {
             && let Some(entity) = self.entities.get_mut(eid)
         {
             if size_up {
-                entity.size *= self.size_gamma;
+                entity.to_size *= self.size_gamma;
             }
             if size_down {
-                entity.size *= 1. / self.size_gamma;
+                entity.to_size *= 1. / self.size_gamma;
             }
             if rotate_clockwise {
-                entity.rotation += self.rotation_delta;
+                entity.to_rotation += self.rotation_delta;
             }
             if rotate_anticlockwise {
-                entity.rotation -= self.rotation_delta;
+                entity.to_rotation -= self.rotation_delta;
             }
         }
 

@@ -11,33 +11,34 @@ use crate::game::{
 #[derive(Debug, Clone)]
 pub struct Entity {
     pub hex: Hex,
-    pub image: String,
-    pub alpha: f32,
-    pub rotation: f32,
-    pub size: f32,
-    pub data: Option<EntityData>,
+    image: String,
+    alpha: f32,
+    rotation: f32,
+    size: f32,
+
+    pub smoothing_factor: f32,
+    pub to_alpha: f32,
+    pub to_rotation: f32,
+    pub to_size: f32,
 }
 
 impl Entity {
-    pub fn new(pos: Hex, image: String) -> Self {
-        Self {
-            hex: pos,
-            image,
-            alpha: 1.,
-            rotation: 0.,
-            size: 1.,
-            data: None,
-        }
+    pub fn new(hex: Hex, image: String) -> Self {
+        Self::new_with_size(hex, image, 1.)
     }
 
-    pub fn new_with_size(pos: Hex, image: String, size: f32) -> Self {
+    pub fn new_with_size(hex: Hex, image: String, size: f32) -> Self {
         Self {
-            hex: pos,
+            hex,
             image,
             alpha: 1.,
             rotation: 0.,
             size,
-            data: None,
+
+            smoothing_factor: 5.,
+            to_alpha: 1.,
+            to_rotation: 0.,
+            to_size: size,
         }
     }
 
@@ -72,8 +73,17 @@ impl Entity {
                 pos.y,
                 hex_inradius_size / 2.,
                 2.,
-                theme.color(ThemeColor::Normal).with_alpha(0.75),
+                theme.color(ThemeColor::Normal).with_alpha(0.25),
             );
+            if (self.size - 1.).abs() > f32::EPSILON {
+                draw_circle_lines(
+                    pos.x,
+                    pos.y,
+                    size / 2.,
+                    2.,
+                    theme.color(ThemeColor::Normal).with_alpha(0.25),
+                );
+            }
         }
     }
 
@@ -88,7 +98,19 @@ impl Entity {
         let pos = h2q(hex_layout.hex_to_world_pos(self.hex));
         self.draw_to(pos, hex_inradius_size, textures, esp, theme);
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum EntityData {}
+    pub fn update(&mut self, dt: f32) {
+        let d = self.to_alpha - self.alpha;
+        if d.abs() > 0.01 {
+            self.alpha += d * self.smoothing_factor * dt;
+        }
+        let d = self.to_rotation - self.rotation;
+        if d.abs() > 0.01 {
+            self.rotation += d * self.smoothing_factor * dt;
+        }
+        let d = self.to_size - self.size;
+        if d.abs() > 0.01 {
+            self.size += d * self.smoothing_factor * dt;
+        }
+    }
+}
