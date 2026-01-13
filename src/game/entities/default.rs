@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    f32,
-};
+use std::{collections::HashMap, f32};
 
 use hexx::Hex;
 use macroquad::prelude::*;
@@ -29,36 +26,18 @@ impl Event for EntityEvent {}
 impl Default for Entities {
     fn default() -> Self {
         // TODO: Remove
-        let todo_remove = HashMap::from([
-            (
-                Hex::new(0, 0),
-                vec![Entity::new("FullTransparentGreen".to_string())],
-            ),
-            (
-                Hex::new(0, 1),
-                vec![Entity::new("Token_Template.png".to_string())],
-            ),
-            (
-                Hex::new(0, 2),
-                vec![Entity::new("dragon, amethyst.png".to_string())],
-            ),
-            (
-                Hex::new(0, 3),
-                vec![Entity::new("bandit001.png".to_string())],
-            ),
-            (
-                Hex::new(0, 4),
-                vec![Entity::new("bandit002.png".to_string())],
-            ),
-            (
-                Hex::new(0, 4),
-                vec![Entity::new_with_size("red_dragon.png".to_string(), 3.)],
-            ),
-        ]);
+        let todo_remove = vec![
+            Entity::new(Hex::new(0, 0), "FullTransparentGreen".to_string()),
+            Entity::new(Hex::new(1, 0), "Token_Template.png".to_string()),
+            Entity::new_with_size(Hex::new(3, -2), "dragon, amethyst.png".to_string(), 2.),
+            Entity::new(Hex::new(3, 0), "bandit001.png".to_string()),
+            Entity::new(Hex::new(4, 0), "bandit002.png".to_string()),
+            Entity::new_with_size(Hex::new(4, 2), "red_dragon.png".to_string(), 3.),
+            Entity::new(Hex::new(6, 0), "This will be an error circle!".to_string()),
+        ];
         Self {
-            entities: todo_remove, //HashMap::new(),
-            selected_entities: HashSet::new(),
-            grabbed_entities: HashSet::new(),
+            entities: todo_remove,
+            grabbed_entity: None,
 
             entity_esp: false,
 

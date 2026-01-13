@@ -1,10 +1,7 @@
 pub mod default;
 pub mod entity;
 
-use std::{
-    collections::{HashMap, HashSet},
-    f32,
-};
+use std::{collections::HashMap, f32};
 
 use anyhow::Result;
 use hexx::{Hex, HexLayout};
@@ -13,14 +10,13 @@ use macroquad::prelude::*;
 use crate::game::{
     entities::{default::EntityEvent, entity::Entity},
     events::Events,
-    map::{h2q, q2h},
-    theme::{Theme, ThemeColor},
+    map::q2h,
+    theme::Theme,
 };
 
 pub struct Entities {
-    entities: HashMap<Hex, Vec<Entity>>,
-    selected_entities: HashSet<Hex>,
-    grabbed_entities: HashSet<Hex>,
+    entities: Vec<Entity>,
+    grabbed_entity: Option<usize>,
     textures: HashMap<String, Texture2D>,
     entity_events: Events<EntityEvent>,
 
@@ -71,50 +67,28 @@ impl Entities {
             let hex =
                 hex_layout.world_pos_to_hex(q2h(camera.screen_to_world(mouse_position().into())));
 
-            if drag
-                && let Some(entities) = self.entities.get_mut(&hex)
-                && let Some(entity) = entities.last_mut()
-            {
+            if drag && let Some((eid, entity)) = self.get_mut_entity_by_hex(hex) {
                 entity.alpha = 0.5;
-                self.grabbed_entities.insert(hex);
+                self.grabbed_entity = Some(eid);
             }
 
-            if drop {
-                for old_hex in self.grabbed_entities.iter() {
-                    if old_hex == hex {
-                        if let Some(entities) = self.entities.get_mut(old_hex)
-                            && let Some(entity) = entities.last_mut()
-                        {
-                            entity.alpha = 1.0;
-                        }
-                    } else if let Some(mut entities) = self.entities.remove(old_hex)
-                        && let Some(mut entity) = entities.pop()
-                    {
-                        entity.alpha = 1.0;
-                        self.entities.entry(hex).or_default().push(entity);
-                        if !entities.is_empty() {
-                            self.entities.insert(*old_hex, entities);
-                        }
-                    }
-                }
-                self.grabbed_entities.clear();
+            if drop && let Some(eid) = self.grabbed_entity {
+                let mut entity = self.entities.remove(eid);
+                entity.alpha = 1.0;
+                entity.hex = hex;
+                self.entities.push(entity);
+                self.grabbed_entity = None;
             }
 
-            if duplicate_drag
-                && let Some(entities) = self.entities.get_mut(&hex)
-                && let Some(entity) = entities.last()
-            {
+            if duplicate_drag && let Some((_eid, entity)) = self.get_entity_by_hex(hex) {
                 let mut entity = entity.clone();
                 entity.alpha = 0.5;
-                self.grabbed_entities.insert(hex);
-                entities.push(entity);
+                self.entities.push(entity);
+                self.grabbed_entity = Some(self.entities.len() - 1);
             }
 
-            if remove && let Some(mut entities) = self.entities.remove(&hex) {
-                entities.pop();
-                if !entities.is_empty() {
-                    self.entities.insert(hex, entities);
-                }
+            if remove {
+                self.pop_entity_by_hex(hex);
             }
         }
 
@@ -124,24 +98,21 @@ impl Entities {
         let rotate_clockwise = self.entity_events.pop(&EntityEvent::RotateClockwise);
         let rotate_anticlockwise = self.entity_events.pop(&EntityEvent::RotateAntiClockwise);
 
-        if size_up || size_down || rotate_clockwise || rotate_anticlockwise {
-            for hex in self.grabbed_entities.iter() {
-                if let Some(entities) = self.entities.get_mut(hex)
-                    && let Some(entity) = entities.last_mut()
-                {
-                    if size_up {
-                        entity.size *= self.size_gamma;
-                    }
-                    if size_down {
-                        entity.size *= 1. / self.size_gamma;
-                    }
-                    if rotate_clockwise {
-                        entity.rotation += self.rotation_delta;
-                    }
-                    if rotate_anticlockwise {
-                        entity.rotation -= self.rotation_delta;
-                    }
-                }
+        if (size_up || size_down || rotate_clockwise || rotate_anticlockwise)
+            && let Some(eid) = self.grabbed_entity
+            && let Some(entity) = self.entities.get_mut(eid)
+        {
+            if size_up {
+                entity.size *= self.size_gamma;
+            }
+            if size_down {
+                entity.size *= 1. / self.size_gamma;
+            }
+            if rotate_clockwise {
+                entity.rotation += self.rotation_delta;
+            }
+            if rotate_anticlockwise {
+                entity.rotation -= self.rotation_delta;
             }
         }
 
@@ -163,41 +134,55 @@ impl Entities {
     }
 
     pub fn draw(&self, theme: &Theme, hex_layout: &HexLayout, camera: &Camera2D) {
-        let hex_inradius_size = h2q(hex_layout.scale) * Self::INRADIUS_2;
-        for (&hex, entities) in self.entities.iter() {
-            let pos = h2q(hex_layout.hex_to_world_pos(hex));
-            for entity in entities.iter() {
-                entity.draw(pos, hex_inradius_size, &self.textures);
-            }
-            if self.entity_esp {
-                draw_circle_lines(
-                    pos.x,
-                    pos.y,
-                    hex_layout.scale.x,
-                    entities.len() as f32,
-                    theme.color(ThemeColor::Normal),
-                );
-            }
-        }
-
-        for hex in self.selected_entities.iter() {
-            let pos = hex_layout.hex_to_world_pos(*hex);
-            draw_circle_lines(
-                pos.x,
-                pos.y,
-                hex_layout.scale.x,
-                3.,
-                theme.color(ThemeColor::Normal),
+        let hex_inradius_size = hex_layout.scale.x * Self::INRADIUS_2;
+        for entity in self.entities.iter() {
+            entity.draw(
+                hex_layout,
+                hex_inradius_size,
+                &self.textures,
+                self.entity_esp,
+                theme,
             );
         }
 
-        for hex in self.grabbed_entities.iter() {
-            if let Some(entities) = self.entities.get(hex)
-                && let Some(entity) = entities.last()
-            {
-                let pos = camera.screen_to_world(mouse_position().into());
-                entity.draw(pos, hex_inradius_size, &self.textures);
-            }
+        if let Some(id) = self.grabbed_entity
+            && let Some(entity) = self.entities.get(id)
+        {
+            let pos = camera.screen_to_world(mouse_position().into());
+            entity.draw_to(
+                pos,
+                hex_inradius_size,
+                &self.textures,
+                self.entity_esp,
+                theme,
+            );
+        }
+    }
+
+    pub fn get_mut_entity_by_hex(&mut self, hex: Hex) -> Option<(usize, &mut Entity)> {
+        self.entities
+            .iter_mut()
+            .enumerate()
+            .rfind(|(_, e)| e.hex == hex)
+    }
+
+    pub fn get_entity_by_hex(&mut self, hex: Hex) -> Option<(usize, &Entity)> {
+        self.entities
+            .iter()
+            .enumerate()
+            .rfind(|(_, e)| e.hex == hex)
+    }
+
+    pub fn pop_entity_by_hex(&mut self, hex: Hex) -> Option<Entity> {
+        if let Some((id, _)) = self
+            .entities
+            .iter()
+            .enumerate()
+            .rfind(|(_, e)| e.hex == hex)
+        {
+            Some(self.entities.remove(id))
+        } else {
+            None
         }
     }
 
