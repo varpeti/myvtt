@@ -6,10 +6,7 @@ use macroquad::prelude::*;
 
 use crate::game::{
     events::{Event, EventS, EventT, Events, MouseButton2},
-    map::{
-        Map, h2q, q2h,
-        tiles::{Tile, TileType},
-    },
+    map::{Map, h2q, q2h, tile::Tile},
     theme::{Theme, ThemeColor},
 };
 
@@ -46,7 +43,7 @@ impl Default for Brush {
         Self {
             to_fade: HashMap::new(),
             fade_factor: 5.,
-            brush: Tile::new(TileType::Empty, 0),
+            brush: Tile::Empty,
             brush_size: 0,
             brush_max_size: 16,
             brush_events: Events::from([
@@ -133,19 +130,19 @@ impl Brush {
         self.brush_events.update();
 
         if self.brush_events.pop(&BrushEvent::PickEmpty) {
-            self.brush.tile_type = TileType::Empty;
+            self.brush = Tile::Empty;
         }
         if self.brush_events.pop(&BrushEvent::PickSmall) {
-            self.brush.tile_type = TileType::Small;
+            self.brush = Tile::Small { rotation: 0 };
         }
         if self.brush_events.pop(&BrushEvent::PickHalf) {
-            self.brush.tile_type = TileType::Half;
+            self.brush = Tile::Half { rotation: 0 };
         }
         if self.brush_events.pop(&BrushEvent::PickLarge) {
-            self.brush.tile_type = TileType::Large;
+            self.brush = Tile::Large { rotation: 0 };
         }
         if self.brush_events.pop(&BrushEvent::PickFull) {
-            self.brush.tile_type = TileType::Full;
+            self.brush = Tile::Full;
         }
         if self.brush_events.pop(&BrushEvent::RotateClockwise) {
             self.brush.rotate(1);
@@ -232,6 +229,7 @@ impl Brush {
                 map.hex_size,
                 theme.color(ThemeColor::Light).with_alpha(0.5 * alpha),
                 theme.color(ThemeColor::Normal).with_alpha(0.5 * alpha),
+                &map.tile_variants,
             );
         }
     }
@@ -239,7 +237,7 @@ impl Brush {
     pub fn insert_walls(&mut self, map: &mut Map) {
         let mc = map.tiles.clone();
         for (hex, tile) in mc.iter() {
-            if tile.tile_type != TileType::Empty {
+            if *tile != Tile::Empty {
                 continue;
             }
             for n0 in hex.all_neighbors() {
@@ -250,7 +248,7 @@ impl Brush {
                 let mut ns = [false; 6];
                 for (v, n1) in n0.all_neighbors().into_iter().enumerate() {
                     if let Some(tile) = map.tiles.get(&n1)
-                        && tile.tile_type == TileType::Empty
+                        && *tile == Tile::Empty
                     {
                         ns[v] = true;
                     }
@@ -258,50 +256,50 @@ impl Brush {
 
                 let tile = match ns {
                     // 6
-                    [true, true, true, true, true, true] => Tile::new(TileType::Empty, 0),
+                    [true, true, true, true, true, true] => Tile::Empty,
 
                     // 5
-                    [true, true, true, true, true, false] => Tile::new(TileType::Empty, 0),
-                    [true, true, true, true, false, true] => Tile::new(TileType::Empty, 0),
-                    [true, true, true, false, true, true] => Tile::new(TileType::Empty, 0),
-                    [true, true, false, true, true, true] => Tile::new(TileType::Empty, 0),
-                    [true, false, true, true, true, true] => Tile::new(TileType::Empty, 0),
-                    [false, true, true, true, true, true] => Tile::new(TileType::Empty, 0),
+                    [true, true, true, true, true, false] => Tile::Empty,
+                    [true, true, true, true, false, true] => Tile::Empty,
+                    [true, true, true, false, true, true] => Tile::Empty,
+                    [true, true, false, true, true, true] => Tile::Empty,
+                    [true, false, true, true, true, true] => Tile::Empty,
+                    [false, true, true, true, true, true] => Tile::Empty,
 
                     // 4
-                    [true, true, true, true, false, false] => Tile::new(TileType::Small, 3),
-                    [false, true, true, true, true, false] => Tile::new(TileType::Small, 4),
-                    [false, false, true, true, true, true] => Tile::new(TileType::Small, 5),
-                    [true, false, false, true, true, true] => Tile::new(TileType::Small, 0),
-                    [true, true, false, false, true, true] => Tile::new(TileType::Small, 1),
-                    [true, true, true, false, false, true] => Tile::new(TileType::Small, 2),
+                    [true, true, true, true, false, false] => Tile::Small { rotation: 3 },
+                    [false, true, true, true, true, false] => Tile::Small { rotation: 4 },
+                    [false, false, true, true, true, true] => Tile::Small { rotation: 5 },
+                    [true, false, false, true, true, true] => Tile::Small { rotation: 0 },
+                    [true, true, false, false, true, true] => Tile::Small { rotation: 1 },
+                    [true, true, true, false, false, true] => Tile::Small { rotation: 2 },
 
                     // 3
-                    [true, true, true, false, false, false] => Tile::new(TileType::Half, 2),
-                    [false, true, true, true, false, false] => Tile::new(TileType::Half, 3),
-                    [false, false, true, true, true, false] => Tile::new(TileType::Half, 4),
-                    [false, false, false, true, true, true] => Tile::new(TileType::Half, 5),
-                    [true, false, false, false, true, true] => Tile::new(TileType::Half, 0),
-                    [true, true, false, false, false, true] => Tile::new(TileType::Half, 1),
+                    [true, true, true, false, false, false] => Tile::Half { rotation: 2 },
+                    [false, true, true, true, false, false] => Tile::Half { rotation: 3 },
+                    [false, false, true, true, true, false] => Tile::Half { rotation: 4 },
+                    [false, false, false, true, true, true] => Tile::Half { rotation: 5 },
+                    [true, false, false, false, true, true] => Tile::Half { rotation: 0 },
+                    [true, true, false, false, false, true] => Tile::Half { rotation: 1 },
 
                     // 2
-                    [true, true, false, false, false, false] => Tile::new(TileType::Large, 1),
-                    [false, true, true, false, false, false] => Tile::new(TileType::Large, 2),
-                    [false, false, true, true, false, false] => Tile::new(TileType::Large, 3),
-                    [false, false, false, true, true, false] => Tile::new(TileType::Large, 4),
-                    [false, false, false, false, true, true] => Tile::new(TileType::Large, 5),
-                    [true, false, false, false, false, true] => Tile::new(TileType::Large, 0),
+                    [true, true, false, false, false, false] => Tile::Large { rotation: 5 },
+                    [false, true, true, false, false, false] => Tile::Large { rotation: 0 },
+                    [false, false, true, true, false, false] => Tile::Large { rotation: 1 },
+                    [false, false, false, true, true, false] => Tile::Large { rotation: 2 },
+                    [false, false, false, false, true, true] => Tile::Large { rotation: 3 },
+                    [true, false, false, false, false, true] => Tile::Large { rotation: 4 },
 
                     // 1
-                    [true, false, false, false, false, false] => Tile::new(TileType::Full, 0),
-                    [false, true, false, false, false, false] => Tile::new(TileType::Full, 0),
-                    [false, false, true, false, false, false] => Tile::new(TileType::Full, 0),
-                    [false, false, false, true, false, false] => Tile::new(TileType::Full, 0),
-                    [false, false, false, false, true, false] => Tile::new(TileType::Full, 0),
-                    [false, false, false, false, false, true] => Tile::new(TileType::Full, 0),
+                    [true, false, false, false, false, false] => Tile::Full,
+                    [false, true, false, false, false, false] => Tile::Full,
+                    [false, false, true, false, false, false] => Tile::Full,
+                    [false, false, false, true, false, false] => Tile::Full,
+                    [false, false, false, false, true, false] => Tile::Full,
+                    [false, false, false, false, false, true] => Tile::Full,
 
                     // 0
-                    [false, false, false, false, false, false] => Tile::new(TileType::Full, 0),
+                    [false, false, false, false, false, false] => Tile::Full,
 
                     _ => continue,
                 };

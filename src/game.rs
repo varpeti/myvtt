@@ -34,7 +34,8 @@ pub struct Game {
 
 impl Game {
     pub async fn load(&mut self) -> Result<()> {
-        self.map.load_map().await?;
+        self.map.load_tile_variants().await?;
+        let _ = self.map.load_map().await;
         self.entities.load_textures().await?;
         self.entities.load_entities().await?;
         Ok(())

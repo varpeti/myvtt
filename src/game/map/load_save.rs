@@ -1,28 +1,22 @@
 use std::{
     cmp::Ordering,
+    collections::HashMap,
     fs,
     io::{BufWriter, Write},
 };
 
-use crate::game::map::{
-    Map,
-    tiles::{Tile, TileType},
-};
+use crate::game::map::{Map, tile::Tile};
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use hexx::Hex;
 use macroquad::prelude::*;
 
 impl Map {
     pub async fn load_map(&mut self) -> Result<()> {
         self.tiles.clear();
-        let content = load_string(&self.current_map_file).await?;
-        for (i, line) in content.lines().enumerate() {
-            let (hex, tile) = parse_line(line)
-                .map_err(|err| anyhow!("Error: #{} line: `{}`: Expected {}", i, line, err))?;
-            self.tiles.insert(hex, tile);
-        }
-
+        let data = load_string(&self.current_map_file).await?;
+        let tiles = ron::from_str::<Vec<(Hex, Tile)>>(&data)?;
+        self.tiles = HashMap::from_iter(tiles);
         Ok(())
     }
 
@@ -45,49 +39,13 @@ impl Map {
                 o => o,
             });
 
-            for (hex, tile) in tiles {
-                writeln!(
-                    file,
-                    "{:+03} {:+03} {} {}",
-                    hex.x,
-                    hex.y,
-                    tile.tile_type.as_ref(),
-                    tile.rotation()
-                )?;
-            }
+            let data = ron::ser::to_string_pretty(
+                &tiles,
+                ron::ser::PrettyConfig::default().compact_structs(true),
+            )?;
+            file.write_all(data.as_bytes())?;
         }
 
         Ok(())
     }
-}
-
-fn parse_line(line: &str) -> Result<(Hex, Tile)> {
-    let mut data = line.split_whitespace();
-
-    let x = data
-        .next()
-        .ok_or_else(|| anyhow!("#1 x as isize"))?
-        .parse::<i32>()
-        .map_err(|err| anyhow!("#1 x as i32: {}", err))?;
-
-    let y = data
-        .next()
-        .ok_or_else(|| anyhow!("#2 y as isize"))?
-        .parse::<i32>()
-        .map_err(|err| anyhow!("#2 x as i32: {}", err))?;
-
-    let tile_type = data
-        .next()
-        .ok_or_else(|| anyhow!("#3 tile_type as TileType"))?
-        .parse::<TileType>()
-        .map_err(|err| anyhow!("#3 tile_type as TileType: {}", err))?;
-
-    let rotation = data
-        .next()
-        .ok_or_else(|| anyhow!("#4 rotation as u8 between 0..6"))?
-        .parse::<u8>()
-        .map_err(|err| anyhow!("#4 rotation as u8 between 0..6: {}", err))?
-        % 6;
-
-    Ok((Hex::new(x, y), Tile::new(tile_type, rotation)))
 }
